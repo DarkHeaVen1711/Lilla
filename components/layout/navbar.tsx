@@ -335,7 +335,7 @@ export function Navbar({ links }: NavbarProps) {
               )}
               
               <div className="flex gap-3">
-                <Link href="/login" className="flex-1 bg-black text-white text-center py-2.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors">
+                <Link href="/checkout" className="flex-1 bg-black text-white text-center py-2.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors">
                   Checkout
                 </Link>
                 <Link href="/cart" className="flex-1 bg-white text-black border border-gray-200 text-center py-2.5 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors">
