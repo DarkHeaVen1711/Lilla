@@ -435,67 +435,45 @@ function toProduct(product: WordPressProduct, fallback: CommerceProduct): Commer
 }
 
 export async function getHomePageData(): Promise<HomePageData> {
-  const payload = await fetchWordPressJson<WordPressHomepagePayload>(
-    process.env.WORDPRESS_HOMEPAGE_ENDPOINT?.trim() ||
-      "/wp-json/lilla-theme/v1/homepage",
-  );
-
-  if (!payload) {
-    return LOCAL_HOME_PAGE_DATA;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000";
+  try {
+    const res = await fetch(`${backendUrl}/api/homepage/`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = (await res.json()) as HomePageData;
+      return data;
+    }
+  } catch (err) {
+    console.error("Failed to fetch homepage data from Django, using local fallback:", err);
   }
 
-  const bestSellers = (payload.bestSellers ?? []).slice(0, 6);
-  const dealOfTheDayProducts = (payload.dealOfTheDay?.products ?? []).slice(0, 3);
-  const comboProducts = (payload.discoverCombos?.products ?? []).slice(0, 4);
-
-  return {
-    announcementBarText: payload.announcementBarText ?? LOCAL_HOME_PAGE_DATA.announcementBarText,
-    navLinks: payload.navLinks ?? LOCAL_HOME_PAGE_DATA.navLinks,
-    heroSlides: payload.heroSlides ?? LOCAL_HOME_PAGE_DATA.heroSlides,
-    frame19Categories: payload.frame19Categories ?? LOCAL_HOME_PAGE_DATA.frame19Categories,
-    bestSellers:
-      bestSellers.length > 0
-        ? bestSellers.map((product, index) =>
-            toProduct(product, LOCAL_HOME_PAGE_DATA.bestSellers[index % LOCAL_HOME_PAGE_DATA.bestSellers.length]),
-          )
-        : LOCAL_HOME_PAGE_DATA.bestSellers,
-    dealOfTheDay: {
-      title: payload.dealOfTheDay?.title ?? LOCAL_HOME_PAGE_DATA.dealOfTheDay.title,
-      products:
-        dealOfTheDayProducts.length > 0
-          ? dealOfTheDayProducts.map((product, index) =>
-              toProduct(product, LOCAL_HOME_PAGE_DATA.dealOfTheDay.products[index % LOCAL_HOME_PAGE_DATA.dealOfTheDay.products.length]),
-            )
-          : LOCAL_HOME_PAGE_DATA.dealOfTheDay.products,
-    },
-    discoverCombos: {
-      title: payload.discoverCombos?.title ?? LOCAL_HOME_PAGE_DATA.discoverCombos.title,
-      products:
-        comboProducts.length > 0
-          ? comboProducts.map((product, index) =>
-              toProduct(product, LOCAL_HOME_PAGE_DATA.discoverCombos.products[index % LOCAL_HOME_PAGE_DATA.discoverCombos.products.length]),
-            )
-          : LOCAL_HOME_PAGE_DATA.discoverCombos.products,
-    },
-    skinConcerns: payload.skinConcerns ?? LOCAL_HOME_PAGE_DATA.skinConcerns,
-    trustBadges: payload.trustBadges ?? LOCAL_HOME_PAGE_DATA.trustBadges,
-    footer: payload.footer ?? LOCAL_HOME_PAGE_DATA.footer,
-  };
+  return LOCAL_HOME_PAGE_DATA;
 }
 
 import { getProductBySlugOOP } from "./products";
 
 export async function getProductBySlug(slug: string) {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000";
+  try {
+    const res = await fetch(`${backendUrl}/api/products/${slug}/`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const product = await res.json();
+      return {
+        ...product,
+        features: product.features_json || []
+      } as unknown as CommerceProduct;
+    }
+  } catch (err) {
+    console.error("Failed to fetch product by slug from Django:", err);
+  }
+
   const oopProduct = getProductBySlugOOP(slug);
   if (oopProduct) {
     return oopProduct;
   }
-  const homePageData = await getHomePageData();
-  const allProducts = [
-    ...homePageData.bestSellers,
-    ...homePageData.dealOfTheDay.products,
-    ...homePageData.discoverCombos.products,
-  ];
 
-  return allProducts.find((product) => product.slug === slug) ?? null;
+  return null;
 }
