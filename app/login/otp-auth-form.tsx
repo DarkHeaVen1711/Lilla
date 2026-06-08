@@ -5,6 +5,7 @@ import Image from "next/image";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { Loader2, Edit3 } from "lucide-react";
 import logo from "@/images/logo.png";
+import { useAuth } from "@/components/AuthProvider";
 
 export function OtpAuthForm() {
   const [step, setStep] = useState<"input" | "otp">("input");
@@ -12,6 +13,9 @@ export function OtpAuthForm() {
   const [agreed, setAgreed] = useState(false);
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  
+  const { login } = useAuth();
   
   const otpRefs = [
     useRef<HTMLInputElement>(null),
@@ -25,10 +29,22 @@ export function OtpAuthForm() {
     if (!authMethod || !agreed) return;
     
     setIsLoading(true);
+    setErrorMsg("");
     try {
-      // Simulate API call to send OTP
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setStep("otp");
+      const res = await fetch("http://localhost:8000/api/auth/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth_method: authMethod }),
+      });
+
+      if (res.ok) {
+        setStep("otp");
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || "Failed to send verification code.");
+      }
+    } catch {
+      setErrorMsg("Connection to auth server failed. Please ensure the Django backend is running.");
     } finally {
       setIsLoading(false);
     }
@@ -40,10 +56,28 @@ export function OtpAuthForm() {
     if (code.length !== 4) return;
 
     setIsLoading(true);
+    setErrorMsg("");
     try {
-      // Simulate API call to verify OTP
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      window.location.href = "/";
+      const res = await fetch("http://localhost:8000/api/auth/verify/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth_method: authMethod, otp: code }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        login(data.token, data.user);
+        
+        // Retrieve redirect page (e.g. back to checkout)
+        const redirectUrl = localStorage.getItem("auth_redirect") || "/";
+        localStorage.removeItem("auth_redirect");
+        window.location.href = redirectUrl;
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || "Invalid OTP code. Please try again.");
+      }
+    } catch {
+      setErrorMsg("Verification request failed. Connection error.");
     } finally {
       setIsLoading(false);
     }
@@ -111,6 +145,11 @@ export function OtpAuthForm() {
             </h2>
 
             <form onSubmit={handleSendOtp} className="flex flex-col gap-5">
+              {errorMsg && (
+                <div className="text-red-500 font-semibold text-sm bg-red-50/50 p-3 border border-red-100 rounded-[6px]">
+                  {errorMsg}
+                </div>
+              )}
               {/* Dynamic Input (Phone/Email) */}
               <div className="relative flex items-center border border-gray-200 rounded-[6px] h-[52px] bg-white overflow-hidden focus-within:border-black transition-colors">
                 {hasPhoneFormat && (
@@ -185,6 +224,11 @@ export function OtpAuthForm() {
             </div>
 
             <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6">
+              {errorMsg && (
+                <div className="text-red-500 font-semibold text-sm bg-red-50/50 p-3 border border-red-100 rounded-[6px]">
+                  {errorMsg}
+                </div>
+              )}
               <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-start">
                 {otp.map((digit, i) => (
                   <input
