@@ -1,4 +1,6 @@
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+export const dynamic = "force-dynamic";
+
 import { Navbar } from "@/components/layout/navbar";
 import { HeroSwitcher } from "@/components/home/HeroSwitcher";
 import { ShopByCategorySection } from "@/components/home/ShopByCategorySection";

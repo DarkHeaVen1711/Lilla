@@ -3,6 +3,7 @@ import { Darker_Grotesque } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { CommerceProvider } from "@/components/providers/CommerceProvider";
 import { AnimationProvider } from "@/components/providers/AnimationProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
 const darkerGrotesque = Darker_Grotesque({
@@ -31,7 +32,9 @@ export default function RootLayout({
     <html lang="en" className={darkerGrotesque.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <AnimationProvider>
-          <CommerceProvider>{children}</CommerceProvider>
+          <AuthProvider>
+            <CommerceProvider>{children}</CommerceProvider>
+          </AuthProvider>
         </AnimationProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

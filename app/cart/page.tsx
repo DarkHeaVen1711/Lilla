@@ -1,10 +1,12 @@
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { getHomePageData } from "@/lib/homepageData";
 
-const CartSummary = dynamic(() =>
+export const dynamic = "force-dynamic";
+
+const CartSummary = nextDynamic(() =>
   import("@/components/CartSummary").then((mod) => mod.CartSummary),
 );
 
