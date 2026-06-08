@@ -1,0 +1,399 @@
+"use client";
+
+import { useState, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Heart, Search, User, X, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { m as motion, AnimatePresence } from "framer-motion";
+
+import { useCommerce } from "@/components/providers/CommerceProvider";
+import logo from "@/images/logo.png";
+import beautyLogo from "@/images/beauty.png";
+import type { HomeSectionLink } from "@/lib/homepageData";
+
+import skin_menu_1 from "@/images/skin_hover_1.png";
+import skin_menu_2 from "@/images/skin_hover_2.png";
+import skin_menu_3 from "@/images/skin_hover_3.png";
+import skin_menu_4 from "@/images/skin_hover_4.png";
+import skin_menu_5 from "@/images/skin_hover_5.png";
+
+import makeup_menu_1 from "@/images/makeup_hover_1.png";
+import makeup_menu_2 from "@/images/makeup_hover_2.png";
+import makeup_menu_3 from "@/images/makeup_hover_3.png";
+import makeup_menu_4 from "@/images/makeup_hover_4.png";
+import makeup_menu_5 from "@/images/makeup_hover_5.png";
+
+const skinMenuItems = [
+  { label: "New Launches", image: skin_menu_1, href: "/shop/skin/new-launches" },
+  { label: "Bestsellers", image: skin_menu_2, href: "/shop/skin/bestsellers" },
+  { label: "Face", image: skin_menu_3, href: "/shop/skin/face" },
+  { label: "Lips", image: skin_menu_4, href: "/shop/skin/lips" },
+  { label: "Eyes", image: skin_menu_5, href: "/shop/skin/eyes" },
+];
+
+const makeupMenuItems = [
+  { label: "New Launches", image: makeup_menu_1, href: "/shop/makeup/new-launches" },
+  { label: "Bestsellers", image: makeup_menu_2, href: "/shop/makeup/bestsellers" },
+  { label: "Face", image: makeup_menu_3, href: "/shop/makeup/face" },
+  { label: "Lips", image: makeup_menu_4, href: "/shop/makeup/lips" },
+  { label: "Eyes", image: makeup_menu_5, href: "/shop/makeup/eyes" },
+];
+
+type NavbarProps = {
+  links: HomeSectionLink[];
+};
+
+const CustomCartIcon = ({ className }: { className?: string }) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M5 8h14v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8z" />
+    <path d="M8 8V6a4 4 0 0 1 8 0v2" />
+  </svg>
+);
+
+export function Navbar({ links }: NavbarProps) {
+  const { cartItems, cartCount, favoriteCount, removeFromCart, updateQuantity } = useCommerce();
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const [activeHover, setActiveHover] = useState<"skin" | "makeup" | null>(null);
+  const [mobileSkinOpen, setMobileSkinOpen] = useState(false);
+  const [mobileMakeupOpen, setMobileMakeupOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = (menu: "skin" | "makeup") => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setActiveHover(menu);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setActiveHover(null);
+    }, 150);
+  };
+
+  const handleMenuMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const handleMenuMouseLeave = () => {
+    setActiveHover(null);
+  };
+
+  return (
+    <header className="fixed top-0 left-0 w-full z-50 h-[80px] bg-white/90 backdrop-blur-md border-b border-transparent transition-all duration-300 flex items-center px-5 lg:px-12 font-sans">
+      <div className="w-full max-w-[1440px] mx-auto flex items-center justify-between">
+        {/* Left Navigation Links & Mobile Menu */}
+        <div className="flex items-center gap-4 lg:gap-8">
+          {/* Mobile Hamburger Menu */}
+          <div className="lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <button aria-label="Menu" className="p-2 -ml-2 text-black hover:opacity-70 transition-opacity">
+                  <Menu className="w-6 h-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] flex flex-col pt-10 px-8">
+                <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
+                <div className="mb-8 mt-2">
+                  <Link href="/">
+                    <Image
+                      src={logo}
+                      alt="LILAA"
+                      width={100}
+                      height={30}
+                      className="object-contain"
+                      priority
+                    />
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-6">
+                  {links.map((link) => {
+                    if (link.label === "Skin") {
+                      return (
+                        <div key={link.label} className="flex flex-col">
+                          <button
+                            onClick={() => setMobileSkinOpen(!mobileSkinOpen)}
+                            className="flex items-center justify-between w-full text-[22px] font-medium text-black transition-colors hover:text-[#E85A4F] outline-none"
+                          >
+                            <span>Skin</span>
+                            <span className="text-xl font-light">{mobileSkinOpen ? "−" : "+"}</span>
+                          </button>
+                          {mobileSkinOpen && (
+                            <div className="flex flex-col pl-4 mt-2 gap-3 border-l border-gray-100">
+                              {skinMenuItems.map((sub) => (
+                                <Link
+                                  key={sub.label}
+                                  href={sub.href}
+                                  className="text-lg text-gray-600 hover:text-[#E85A4F] transition-colors"
+                                >
+                                  {sub.label}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (link.label === "Makeup") {
+                      return (
+                        <div key={link.label} className="flex flex-col">
+                          <button
+                            onClick={() => setMobileMakeupOpen(!mobileMakeupOpen)}
+                            className="flex items-center justify-between w-full text-[22px] font-medium text-black transition-colors hover:text-[#E85A4F] outline-none"
+                          >
+                            <span>Makeup</span>
+                            <span className="text-xl font-light">{mobileMakeupOpen ? "−" : "+"}</span>
+                          </button>
+                          {mobileMakeupOpen && (
+                            <div className="flex flex-col pl-4 mt-2 gap-3 border-l border-gray-100">
+                              {makeupMenuItems.map((sub) => (
+                                <Link
+                                  key={sub.label}
+                                  href={sub.href}
+                                  className="text-lg text-gray-600 hover:text-[#E85A4F] transition-colors"
+                                >
+                                  {sub.label}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={link.label}
+                        href={link.href}
+                        className="text-[22px] font-medium text-black transition-colors hover:text-[#E85A4F]"
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                  <div className="h-px bg-gray-100 w-full my-2" />
+                  <Link href="/login" className="flex items-center gap-4 text-lg font-medium text-black">
+                    <User className="w-5 h-5" />
+                    Account
+                  </Link>
+                  <Link href="/favorites" className="flex items-center gap-4 text-lg font-medium text-black">
+                    <div className="relative">
+                      <Heart className="w-5 h-5" />
+                      {favoriteCount > 0 && (
+                        <span className="absolute -right-2 -top-2 min-w-4 h-4 rounded-full bg-black text-white text-[10px] leading-4 text-center px-1">
+                          {favoriteCount}
+                        </span>
+                      )}
+                    </div>
+                    Wishlist
+                  </Link>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {/* Desktop Links */}
+          <div className="hidden lg:flex items-center gap-8 h-full">
+            {links.map((link) => {
+              const isSkin = link.label === "Skin";
+              const isMakeup = link.label === "Makeup";
+              const isActive = (isSkin && activeHover === "skin") || (isMakeup && activeHover === "makeup");
+              
+              return (
+                <div
+                  key={link.label}
+                  onMouseEnter={isSkin ? () => handleMouseEnter("skin") : isMakeup ? () => handleMouseEnter("makeup") : undefined}
+                  onMouseLeave={isSkin || isMakeup ? handleMouseLeave : undefined}
+                  className="flex items-center h-[80px]"
+                >
+                  <Link
+                    href={link.href}
+                    className={`text-[24px] font-medium transition-colors ${
+                      isActive ? "text-[#E85A4F]" : "text-black hover:text-[#E85A4F]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Center Logo */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+          <Link href="/">
+            <Image
+              src={activeHover ? beautyLogo : logo}
+              alt={activeHover ? "Beauty" : "LILAA"}
+              width={120}
+              height={40}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+          </Link>
+        </div>
+
+        {/* Right Utility Icons */}
+        <div className="flex items-center gap-4 lg:gap-6">
+          <Link
+            href="/shop"
+            aria-label="Search products"
+            className="hover:opacity-70 transition-opacity p-2 -mr-2 lg:p-0 lg:mr-0"
+          >
+            <Search className="w-6 h-6" />
+          </Link>
+          <Link
+            href="/login"
+            aria-label="Account"
+            className="hidden lg:flex hover:opacity-70 transition-opacity"
+          >
+            <User className="w-6 h-6" />
+          </Link>
+          <Link
+            href="/favorites"
+            aria-label="Wishlist"
+            className="hidden lg:flex relative hover:opacity-70 transition-opacity"
+          >
+            <Heart className="w-6 h-6" />
+            {favoriteCount > 0 && (
+              <span className="absolute -right-2 -top-2 min-w-5 h-5 rounded-full bg-black text-white text-[11px] leading-5 text-center px-1">
+                {favoriteCount}
+              </span>
+            )}
+          </Link>
+          <div className="relative group">
+            <Link
+              href="/cart"
+              aria-label="Cart"
+              className="relative hover:opacity-70 transition-opacity flex items-center h-full py-4"
+            >
+              <CustomCartIcon className="w-[26px] h-[26px] text-black" />
+              {cartCount > 0 && (
+                <span className="absolute -right-2 top-2 min-w-5 h-5 rounded-full bg-black text-white text-[11px] leading-5 text-center px-1">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Cart Popover */}
+            <div className="absolute top-[100%] right-0 w-[360px] max-h-[500px] bg-white rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 p-5 transform translate-y-2 group-hover:translate-y-0 cursor-default flex flex-col">
+              
+              {cartItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-500 font-medium">
+                  Your cart is empty.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-4 mb-6 overflow-y-auto max-h-[240px] pr-2 custom-scrollbar">
+                    {cartItems.slice(0, 3).map((item) => (
+                      <div key={item.id} className="flex gap-4">
+                        <Link href={`/products/${item.slug}`} className="w-16 h-16 bg-[#F9F9F9] rounded-md relative flex-shrink-0 flex items-center justify-center border border-gray-50 p-2 cursor-pointer hover:opacity-80 transition-opacity">
+                          <Image src={item.image} alt={item.name} fill className="object-contain p-1" />
+                        </Link>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <Link href={`/products/${item.slug}`}>
+                              <p className="text-sm font-medium text-black leading-tight line-clamp-2 pr-2 hover:text-[#E85A4F] transition-colors">{item.name}</p>
+                            </Link>
+                            <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="mt-2 flex items-center gap-4">
+                            <span className="font-semibold text-base">${item.price}</span>
+                            <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5">
+                              <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-5 text-center text-gray-500 hover:text-black font-medium leading-none pb-[2px]">-</button>
+                              <span className="w-4 text-center text-sm font-semibold">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-5 text-center text-gray-500 hover:text-black font-medium leading-none pb-[2px]">+</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {cartItems.length > 3 && (
+                      <div className="text-center text-sm text-gray-500 mt-2 font-medium">
+                        +{cartItems.length - 3} more items
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="border-t border-gray-100 pt-4 mb-4 flex justify-between items-center">
+                    <span className="text-sm text-gray-600 font-medium">Subtotal</span>
+                    <span className="font-bold text-[18px] text-black">${cartTotal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+              
+              <div className="flex gap-3">
+                <Link href="/login" className="flex-1 bg-black text-white text-center py-2.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors">
+                  Checkout
+                </Link>
+                <Link href="/cart" className="flex-1 bg-white text-black border border-gray-200 text-center py-2.5 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors">
+                  View Cart
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Hover Menu Overlay */}
+      <AnimatePresence>
+        {activeHover && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            onMouseEnter={handleMenuMouseEnter}
+            onMouseLeave={handleMenuMouseLeave}
+            className="absolute left-0 top-[80px] w-full bg-[#FDF7F7] shadow-[0_10px_30px_rgba(0,0,0,0.05)] border-b border-gray-100 z-40 overflow-hidden"
+            style={{ height: "369px" }}
+          >
+            <div className="w-full max-w-[1440px] mx-auto h-full flex items-center justify-between px-12 lg:px-24">
+              {(activeHover === "skin" ? skinMenuItems : makeupMenuItems).map((item, idx) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="flex flex-col items-center gap-6 group/item cursor-pointer"
+                >
+                  <div className="relative w-[225px] h-[225px] rounded-full overflow-hidden transition-transform duration-300 group-hover/item:scale-105 shadow-sm border border-gray-200/10">
+                    <Image
+                      src={item.image}
+                      alt={item.label}
+                      fill
+                      className="object-cover"
+                      priority={idx < 2}
+                    />
+                  </div>
+                  <span
+                    className="text-black font-normal transition-colors group-hover/item:text-[#E85A4F]"
+                    style={{
+                      fontFamily: "var(--font-serif), 'Nyght Serif', serif",
+                      fontWeight: 400,
+                      fontSize: "30px",
+                      lineHeight: "38px",
+                      letterSpacing: "0%",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
