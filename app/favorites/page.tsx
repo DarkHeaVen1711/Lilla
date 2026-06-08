@@ -1,4 +1,6 @@
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+export const dynamic = "force-dynamic";
+
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FavoritesClient } from "@/components/FavoritesClient";

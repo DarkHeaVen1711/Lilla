@@ -1,34 +1,36 @@
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/navbar";
 import { HeroSwitcher } from "@/components/home/HeroSwitcher";
 import { getHomePageData } from "@/lib/homepageData";
 
-const ShopByCategorySection = dynamic(() =>
+export const dynamic = "force-dynamic";
+
+const ShopByCategorySection = nextDynamic(() =>
   import("@/components/home/ShopByCategorySection").then((mod) => mod.ShopByCategorySection),
 );
-const BestSellersSection = dynamic(() =>
+const BestSellersSection = nextDynamic(() =>
   import("@/components/home/BestSellersSection").then(
     (mod) => mod.BestSellersSection,
   ),
 );
-const ShopBySkinConcernSection = dynamic(() =>
+const ShopBySkinConcernSection = nextDynamic(() =>
   import("@/components/home/ShopBySkinConcernSection").then(
     (mod) => mod.ShopBySkinConcernSection,
   ),
 );
-const DiscoverCombosSection = dynamic(() =>
+const DiscoverCombosSection = nextDynamic(() =>
   import("@/components/home/DiscoverCombosSection").then((mod) => mod.DiscoverCombosSection),
 );
-const DealOfTheDaySection = dynamic(() =>
+const DealOfTheDaySection = nextDynamic(() =>
   import("@/components/home/DealOfTheDaySection").then(
     (mod) => mod.DealOfTheDaySection,
   ),
 );
-const TrustBadgesSection = dynamic(() =>
+const TrustBadgesSection = nextDynamic(() =>
   import("@/components/home/TrustBadgesSection").then((mod) => mod.TrustBadgesSection),
 );
-const Footer = dynamic(() =>
+const Footer = nextDynamic(() =>
   import("@/components/layout/footer").then((mod) => mod.Footer),
 );
 

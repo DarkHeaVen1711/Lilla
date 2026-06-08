@@ -16,6 +16,7 @@ type CommerceContextValue = {
   updateQuantity: (productId: string, quantity: number) => void;
   toggleFavorite: (product: CommerceProduct) => void;
   isFavorite: (productId: string) => boolean;
+  clearCart: () => void;
 };
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
@@ -104,6 +105,10 @@ export function CommerceProvider({
     );
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
   const value = useMemo<CommerceContextValue>(
     () => ({
       cartItems,
@@ -116,6 +121,7 @@ export function CommerceProvider({
       toggleFavorite,
       isFavorite: (productId: string) =>
         favoriteItems.some((item) => item.id === productId),
+      clearCart,
     }),
     [cartItems, favoriteItems],
   );

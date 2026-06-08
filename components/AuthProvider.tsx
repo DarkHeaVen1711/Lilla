@@ -1,12 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+type UserType = {
+  auth_method: string;
+};
 
 type AuthContextType = {
   requireAuth: (action: () => void) => void;
   isAuthenticated: boolean;
-  login: () => void;
+  user: UserType | null;
+  login: (token: string, user: UserType) => void;
   logout: () => void;
 };
 
@@ -22,9 +27,24 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserType | null>(null);
   const router = useRouter();
 
-  // State Controller Logic
+  // Load authentication status on initial mount
+  useEffect(() => {
+    const token = localStorage.getItem("lilla_token");
+    const storedUser = localStorage.getItem("lilla_user");
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+        setIsAuthenticated(true);
+      } catch {
+        localStorage.removeItem("lilla_token");
+        localStorage.removeItem("lilla_user");
+      }
+    }
+  }, []);
+
   const requireAuth = (action: () => void) => {
     if (isAuthenticated) {
       action(); // User is verified, execute immediately
@@ -33,11 +53,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = () => setIsAuthenticated(true);
-  const logout = () => setIsAuthenticated(false);
+  const login = (token: string, userData: UserType) => {
+    localStorage.setItem("lilla_token", token);
+    localStorage.setItem("lilla_user", JSON.stringify(userData));
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  const logout = () => {
+    localStorage.removeItem("lilla_token");
+    localStorage.removeItem("lilla_user");
+    setUser(null);
+    setIsAuthenticated(false);
+    router.push("/");
+  };
 
   return (
-    <AuthContext.Provider value={{ requireAuth, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ requireAuth, isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
