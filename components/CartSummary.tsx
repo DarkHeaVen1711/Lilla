@@ -198,7 +198,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
                   <span className="text-[28px] sm:text-[36px] font-black text-black leading-none">${total.toFixed(2)}</span>
                 </div>
   
-                <Link href="/login" className="w-full h-[50px] sm:h-[56px] bg-black text-white rounded-xl text-[20px] sm:text-[24px] font-bold hover:bg-gray-800 transition-colors flex items-center justify-center">
+                <Link href="/checkout" className="w-full h-[50px] sm:h-[56px] bg-black text-white rounded-xl text-[20px] sm:text-[24px] font-bold hover:bg-gray-800 transition-colors flex items-center justify-center">
                   Checkout
                 </Link>
               </div>
