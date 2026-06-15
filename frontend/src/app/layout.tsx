@@ -6,6 +6,7 @@ import { AnimationProvider } from "@/components/providers/AnimationProvider";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { getHomePageData } from "@/lib/homepageData";
 // Century Commit: 100th commit of the day! 🚀
 import "./globals.css";
@@ -46,6 +47,7 @@ export default async function RootLayout({
               newsletterTitle={homePageData.footer.newsletterTitle}
               columns={homePageData.footer.columns}
             />
+            <AuthModal />
           </CommerceProvider>
         </AnimationProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
