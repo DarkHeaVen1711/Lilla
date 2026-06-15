@@ -101,3 +101,106 @@ export interface FrontendProduct {
   shades?: Array<{ name: string; hex: string }>;
   featured?: boolean;
 }
+
+// Mock database simulating WooCommerce REST API response
+export const MOCK_WOOCOMMERCE_PRODUCTS: WooCommerceProduct[] = [
+  {
+    id: 101,
+    name: "Red Bean Refreshing pore mask",
+    slug: "red-bean-refreshing-pore-mask",
+    type: "simple",
+    status: "publish",
+    featured: true,
+    description: "Beauty of Joseon Red Bean Mask with 30% red bean and kaolin washes away excess sebum. exfoliates for bright, clean, and refreshed skin.",
+    short_description: "Refreshing pore mask with red bean and kaolin clay.",
+    price: "120",
+    regular_price: "150",
+    sale_price: "120",
+    on_sale: true,
+    total_sales: 320,
+    stock_status: "instock",
+    average_rating: "4.8",
+    rating_count: 108,
+    categories: [{ id: 10, name: "Treatments & Mask", slug: "treatments-mask" }],
+    images: [{ id: 1, src: imgRedPore, name: "Red Bean Refreshing pore mask", alt: "Red Bean Refreshing pore mask" }],
+    meta_data: [
+      { key: "expiresOn", value: "28/12/2027" },
+      { key: "skinConcerns", value: ["Pore tightening", "Sebum control"] },
+      { key: "keyIngredients", value: ["Red Bean Extract 30%", "Kaolin Clay"] },
+      {
+        key: "features",
+        value: [
+          { badge: "Pores", title: "Sebum Absorption", description: "Kaolin clay draws out deep-rooted impurities and oil.", x1: 20, y1: 26, x2: 45, y2: 35 },
+          { badge: "Exfoliation", title: "Red Bean Scrub", description: "Mild red bean powder particles gently buff away dead cells.", x1: 32, y1: 80, x2: 48, y2: 65 },
+          { badge: "Soothing", title: "Cooling Texture", description: "Soft clay formula provides refreshing hydration to skin.", x1: 80, y1: 36, x2: 56, y2: 48 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 102,
+    name: "Radiance Pink Serum",
+    slug: "radiance-pink-serum",
+    type: "simple",
+    status: "publish",
+    featured: true,
+    description: "Hydrating serum for a glowing, luminous complexion.",
+    short_description: "Glowing, luminous complexion pink serum.",
+    price: "120",
+    regular_price: "150",
+    sale_price: "120",
+    on_sale: true,
+    total_sales: 450,
+    stock_status: "instock",
+    average_rating: "5.0",
+    rating_count: 124,
+    categories: [{ id: 11, name: "Daily Essentials", slug: "daily-essentials" }],
+    images: [{ id: 2, src: imgSerum, name: "Radiance Pink Serum", alt: "Radiance Pink Serum" }],
+    meta_data: [
+      { key: "expiresOn", value: "15/09/2027" },
+      { key: "skinConcerns", value: ["Dullness", "Dryness"] },
+      { key: "keyIngredients", value: ["Pink Pearl Extract", "Niacinamide"] },
+      {
+        key: "features",
+        value: [
+          { badge: "Glow", title: "Radiant Finish", description: "Leaves a soft pink pearl glow on the skin immediately.", x1: 20, y1: 26, x2: 45, y2: 35 },
+          { badge: "Moisture", title: "Deep Hydration", description: "Infuses multi-weight hyaluronic acid into dry cells.", x1: 32, y1: 80, x2: 48, y2: 65 },
+          { badge: "Barrier", title: "Niacinamide Boost", description: "Strengthens skin structure to resist pigmentation.", x1: 80, y1: 36, x2: 56, y2: 48 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 103,
+    name: "Vitamin C",
+    slug: "vitamin-c-cream",
+    type: "simple",
+    status: "publish",
+    featured: true,
+    description: "Brightening vitamin C cream for daily skin glow and protection.",
+    short_description: "Daily brightening skin glow cream.",
+    price: "85",
+    regular_price: "85",
+    sale_price: "",
+    on_sale: false,
+    total_sales: 190,
+    stock_status: "instock",
+    average_rating: "4.8",
+    rating_count: 89,
+    categories: [{ id: 11, name: "Daily Essentials", slug: "daily-essentials" }],
+    images: [{ id: 3, src: imgCream, name: "Vitamin C", alt: "Vitamin C" }],
+    meta_data: [
+      { key: "skinConcerns", value: ["Brightening", "Anti-aging"] },
+      { key: "keyIngredients", value: ["Pure Vitamin C", "Adenosine"] }
+    ]
+  },
+  {
+    id: 104,
+    name: "Lip Gloss",
+    slug: "lip-gloss",
+    type: "simple",
+    status: "publish",
+    featured: true,
+    description: "High-shine lip gloss with metallic tint and hydration.",
+    short_description: "High-shine hydrating lip gloss.",
+    price: "45",
