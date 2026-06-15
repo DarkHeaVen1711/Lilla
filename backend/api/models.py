@@ -42,8 +42,21 @@ class Product(models.Model):
         return self.name
 
 
+class OTPVerification(models.Model):
+    auth_method = models.CharField(max_length=255, db_index=True)
+    otp_code = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.auth_method} - {self.otp_code}"
+
+
+from django.contrib.auth.models import User
+
 class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     user_identifier = models.CharField(max_length=255)  # email or phone number
     shipping_name = models.CharField(max_length=255)
     shipping_address = models.TextField()

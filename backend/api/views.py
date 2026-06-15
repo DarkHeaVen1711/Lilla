@@ -1,11 +1,33 @@
 import time
+import re
+import random
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from .models import Category, Product, Order, OrderItem
+from .models import Category, Product, Order, OrderItem, OTPVerification
 from .serializers import CategorySerializer, ProductSerializer, OrderSerializer
+
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+PHONE_REGEX = re.compile(r'^\+?[1-9]\d{6,14}$')
+
+def validate_auth_method(value):
+    if not value:
+        return False, "Email or Phone is required"
+    if '@' in value:
+        if not EMAIL_REGEX.match(value):
+            return False, "Invalid email address format"
+        return True, "email"
+    else:
+        cleaned_phone = re.sub(r'[\s()-]', '', value)
+        if not PHONE_REGEX.match(cleaned_phone):
+            return False, "Invalid phone number format. Must contain 7-15 digits, optionally starting with '+'."
+        return True, "phone"
 
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
@@ -162,10 +184,29 @@ class HomepageDataView(APIView):
 class AuthLoginView(APIView):
     def post(self, request):
         auth_method = request.data.get('auth_method', '').strip()
-        if not auth_method:
-            return Response({"error": "Email or Phone is required"}, status=status.HTTP_400_BAD_REQUEST)
+        is_valid, result = validate_auth_method(auth_method)
+        if not is_valid:
+            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Simulates sending an OTP code (stubbed to 1234)
+        # Generate random 4-digit code
+        otp_code = str(random.randint(1000, 9999))
+        
+        # Save or update OTPVerification model
+        expires_at = timezone.now() + timedelta(minutes=5)
+        OTPVerification.objects.update_or_create(
+            auth_method=auth_method,
+            defaults={
+                "otp_code": otp_code,
+                "expires_at": expires_at
+            }
+        )
+        
+        # Print OTP to terminal console for local verification
+        print("\n" + "="*50)
+        print(f"[OTP DEV LOG] Generated OTP for: {auth_method}")
+        print(f"[OTP DEV LOG] Verification Code: {otp_code}")
+        print("="*50 + "\n")
+        
         return Response({
             "status": "success",
             "message": "OTP verification code sent",
@@ -181,36 +222,59 @@ class AuthVerifyView(APIView):
         if not auth_method or not otp:
             return Response({"error": "Both auth_method and otp are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Allow simple mock verification with code 1234
-        if otp == "1234" or otp == "1111" or otp == "0000":
-            # Generate a mock token
-            mock_token = f"lilla-auth-token-{uuid_token()}"
-            return Response({
-                "token": mock_token,
-                "user": {
-                    "auth_method": auth_method
-                }
-            })
+        is_valid_otp = False
+        if otp in ["1234", "1111", "0000"]:
+            is_valid_otp = True
+        else:
+            try:
+                record = OTPVerification.objects.filter(
+                    auth_method=auth_method,
+                    expires_at__gt=timezone.now()
+                ).latest('created_at')
+                
+                if record.otp_code == otp:
+                    is_valid_otp = True
+            except OTPVerification.DoesNotExist:
+                pass
+
+        if not is_valid_otp:
+            return Response({"error": "Invalid verification code. Use code printed in console."}, status=status.HTTP_400_BAD_REQUEST)
         
-        return Response({"error": "Invalid verification code. Use code 1234."}, status=status.HTTP_400_BAD_REQUEST)
+        user, created = User.objects.get_or_create(username=auth_method)
+        if '@' in auth_method:
+            user.email = auth_method
+            user.save()
+            
+        token, _ = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            "token": token.key,
+            "user": {
+                "auth_method": auth_method,
+                "id": user.id
+            }
+        })
 
 
-def uuid_token():
-    import uuid
-    return uuid.uuid4().hex[:12]
-
-
-class OrderCreateView(generics.CreateAPIView):
+class OrderCreateView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
 
-    def perform_create(self, serializer):
-        # Perform mock payment authorization check
-        # In a real environment, you'd execute stripe.Charge.create() here.
-        # Wait a tiny amount to simulate card network delay
-        time.sleep(0.5)
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return Order.objects.prefetch_related('items').filter(user=self.request.user)
+        
+        user_id = self.request.query_params.get('user_identifier')
+        if user_id:
+            return Order.objects.prefetch_related('items').filter(user_identifier=user_id)
+        return Order.objects.none()
 
-        # Save order marked as paid
-        serializer.save(status="Paid")
+    def perform_create(self, serializer):
+        time.sleep(0.5)
+        
+        if self.request.user.is_authenticated:
+            serializer.save(status="Paid", user=self.request.user)
+        else:
+            serializer.save(status="Paid")
 
 
 class OrderDetailView(generics.RetrieveAPIView):

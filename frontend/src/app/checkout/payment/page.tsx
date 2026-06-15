@@ -47,11 +47,17 @@ export default function PaymentPage() {
       };
 
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const token = localStorage.getItem("lilla-auth-token");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Token ${token}`;
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/orders/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(orderPayload),
       });
 
