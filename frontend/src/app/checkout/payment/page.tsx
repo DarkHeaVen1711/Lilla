@@ -1,92 +1,68 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckoutBreadcrumbs } from "@/components/checkout/CheckoutBreadcrumbs";
-import { PaymentMethodSelector, type PaymentMethod } from "@/components/checkout/PaymentMethodSelector";
+import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { CreditCardForm } from "@/components/checkout/CreditCardForm";
 import { PaymentSummary } from "@/components/checkout/PaymentSummary";
-import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function PaymentPage() {
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("Credit/Debit Card");
   const router = useRouter();
-  const { cartItems, clearCart } = useCommerce();
+  const cartItems = useStore((s) => s.cart.items);
+  const orderTotal = useStore((s) => s.cart.orderTotal);
+  const billingAddress = useStore((s) => s.checkoutForm.billingAddress);
+  const clearCart = useStore((s) => s.clearCart);
+  const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
+  const paymentMethod = useStore((s) => s.checkoutForm.paymentMethod);
+  const setPaymentMethod = useStore((s) => s.setPaymentMethod);
   const [loading, setLoading] = useState(false);
+
+  // Map Zustand PaymentMethodType to display string
+  const methodDisplay = { COD: "Cash On Delivery", CARD: "Credit/Debit Card", NETBANKING: "Net Banking" } as const;
+  const displayToType = { "Cash On Delivery": "COD", "Credit/Debit Card": "CARD", "Net Banking": "NETBANKING" } as const;
 
   const handlePlaceOrder = async (e: React.MouseEvent, method: string) => {
     e.preventDefault();
-    if (cartItems.length === 0) {
-      alert("Your cart is empty");
-      return;
-    }
+    if (cartItems.length === 0) { alert("Your cart is empty"); return; }
     setLoading(true);
     try {
-      const billingSaved = localStorage.getItem("lilla-checkout-billing");
-      const billing = billingSaved ? JSON.parse(billingSaved) : {};
-
-      const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const discount = subtotal * 0.2;
-      const deliveryFee = 15.0;
-      const total = subtotal - discount + deliveryFee;
-
       const orderPayload = {
-        user_identifier: billing.email || billing.phone || "guest@lilla.com",
-        shipping_name: `${billing.firstName || "John"} ${billing.lastName || "Doe"}`.trim(),
-        shipping_address: `${billing.address || "123 Main St"}, ${billing.state || "NY"}, ${billing.country || "US"}`.trim(),
-        shipping_city: billing.city || "New York",
-        shipping_postal_code: billing.zip || "10001",
-        total_price: total.toFixed(2),
+        user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
+        shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
+        shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
+        shipping_city: billingAddress.city || "New York",
+        shipping_postal_code: billingAddress.zip || "10001",
+        total_price: orderTotal.toFixed(2),
+        payment_method: method,
         items: cartItems.map(item => ({
           product_id: item.id,
           product_name: item.name,
           price: item.price.toFixed(2),
-          quantity: item.quantity
-        }))
+          quantity: item.quantity,
+        })),
       };
 
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const token = localStorage.getItem("lilla-auth-token");
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Token ${token}`;
-      }
+      const token = typeof window !== "undefined" ? localStorage.getItem("lilla-auth-token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Token ${token}`;
 
-      const res = await fetch(`${API_BASE_URL}/api/orders/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to place order: ${res.statusText}`);
-      }
+      const res = await fetch(`${API_BASE_URL}/api/orders/`, { method: "POST", headers, body: JSON.stringify(orderPayload) });
+      if (!res.ok) throw new Error(`Failed to place order: ${res.statusText}`);
 
       const orderData = await res.json();
-      
-      const orderWithImages = {
-        ...orderData,
-        items: orderData.items.map((item: any) => {
-          const cartItem = cartItems.find(ci => ci.id === item.product_id);
-          return {
-            ...item,
-            image: cartItem?.image || null
-          };
-        })
-      };
-
+      const orderWithImages = { ...orderData, items: orderData.items?.map((item: Record<string, unknown>) => ({ ...item, image: cartItems.find(c => c.id === item.product_id)?.image || null })) ?? [] };
       localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
       clearCart();
+      clearCheckoutForm();
       router.push("/checkout/success");
     } catch (error) {
       console.error("Order submission error:", error);
       alert("Error placing order. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -101,40 +77,33 @@ export default function PaymentPage() {
           
           {/* Column Block One (Left Options Navigation Selector) */}
           <div className="w-full lg:w-1/4">
-            <PaymentMethodSelector selectedMethod={selectedMethod} onSelectMethod={setSelectedMethod} />
+            <PaymentMethodSelector
+              selectedMethod={methodDisplay[paymentMethod]}
+              onSelectMethod={(m) => setPaymentMethod(displayToType[m])}
+            />
           </div>
 
           {/* Column Block Two (Center Data Collection Canvas) */}
           <div className="w-full lg:w-2/4">
-            {selectedMethod === "Credit/Debit Card" && <CreditCardForm />}
+            {paymentMethod === "CARD" && <CreditCardForm />}
             
-            {selectedMethod === "Cash On Delivery" && (
+            {paymentMethod === "COD" && (
               <div className="w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-sm font-sans flex flex-col h-full min-h-[400px]">
                 <h2 className="font-serif text-3xl mb-8">Cash On Delivery</h2>
-                <p className="text-gray-600 mb-8 flex-grow">
-                  You can pay in cash to our courier when you receive the goods at your doorstep. Please ensure you have the exact amount ready.
-                </p>
-                <button 
-                  onClick={(e) => handlePlaceOrder(e, "Cash On Delivery")}
-                  disabled={loading}
-                  className="w-full h-[56px] bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors mt-8 flex items-center justify-center disabled:bg-gray-500"
-                >
+                <p className="text-gray-600 mb-8 flex-grow">You can pay in cash to our courier when you receive the goods at your doorstep. Please ensure you have the exact amount ready.</p>
+                <button onClick={(e) => handlePlaceOrder(e, "COD")} disabled={loading}
+                  className="w-full h-[56px] bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors mt-8 flex items-center justify-center disabled:bg-gray-500">
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Place order"}
                 </button>
               </div>
             )}
 
-            {selectedMethod === "Net Banking" && (
+            {paymentMethod === "NETBANKING" && (
               <div className="w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-sm font-sans flex flex-col h-full min-h-[400px]">
                 <h2 className="font-serif text-3xl mb-8">Net Banking</h2>
-                <p className="text-gray-600 mb-8 flex-grow">
-                  You will be redirected to your bank's secure portal to complete the payment. Make sure you have your banking credentials ready.
-                </p>
-                <button 
-                  onClick={(e) => handlePlaceOrder(e, "Net Banking")}
-                  disabled={loading}
-                  className="w-full h-[56px] bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors mt-8 flex items-center justify-center disabled:bg-gray-500"
-                >
+                <p className="text-gray-600 mb-8 flex-grow">You will be redirected to your bank's secure portal to complete the payment. Make sure you have your banking credentials ready.</p>
+                <button onClick={(e) => handlePlaceOrder(e, "NETBANKING")} disabled={loading}
+                  className="w-full h-[56px] bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors mt-8 flex items-center justify-center disabled:bg-gray-500">
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Proceed to Bank"}
                 </button>
               </div>
