@@ -1,9 +1,12 @@
 import time
+import os
 import re
 import random
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
@@ -181,6 +184,39 @@ class HomepageDataView(APIView):
         return Response(data)
 
 
+def send_email_otp(email, otp):
+    subject = "Lilla Verification Code"
+    message = f"Your verification code is: {otp}. It will expire in 5 minutes."
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lilla.com')
+    try:
+        send_mail(subject, message, from_email, [email], fail_silently=False)
+        print(f"[EMAIL SENDER] Successfully sent email to {email}")
+    except Exception as e:
+        print(f"[EMAIL SENDER] Error sending email to {email}: {e}")
+
+def send_sms_otp(phone, otp):
+    message_body = f"Your Lilla verification code is: {otp}"
+    print(f"\n[SMS SENDER] Sending SMS to {phone}: '{message_body}'")
+    
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+    from_number = os.getenv('TWILIO_PHONE_NUMBER')
+    
+    if account_sid and auth_token and from_number:
+        try:
+            from twilio.rest import Client
+            client = Client(account_sid, auth_token)
+            client.messages.create(
+                body=message_body,
+                from_=from_number,
+                to=phone
+            )
+            print(f"[SMS SENDER] Twilio successfully sent message to {phone}")
+        except Exception as e:
+            print(f"[SMS SENDER] Twilio error sending message to {phone}: {e}")
+    else:
+        print("[SMS SENDER] Twilio keys not configured.")
+
 class AuthLoginView(APIView):
     def post(self, request):
         auth_method = request.data.get('auth_method', '').strip()
@@ -207,11 +243,29 @@ class AuthLoginView(APIView):
         print(f"[OTP DEV LOG] Verification Code: {otp_code}")
         print("="*50 + "\n")
         
-        return Response({
+        # Route OTP to Email or SMS
+        has_twilio = bool(os.getenv('TWILIO_ACCOUNT_SID'))
+        is_console_mail = getattr(settings, 'EMAIL_BACKEND', '') == 'django.core.mail.backends.console.EmailBackend'
+        
+        otp_in_response = False
+        if result == "email":
+            send_email_otp(auth_method, otp_code)
+            if is_console_mail:
+                otp_in_response = True
+        elif result == "phone":
+            send_sms_otp(auth_method, otp_code)
+            if not has_twilio:
+                otp_in_response = True
+        
+        response_data = {
             "status": "success",
             "message": "OTP verification code sent",
             "auth_method": auth_method
-        })
+        }
+        if otp_in_response:
+            response_data["dev_otp"] = otp_code
+            
+        return Response(response_data)
 
 
 class AuthVerifyView(APIView):

@@ -9,6 +9,7 @@ import logo from "@/images/logo.png";
 export function OtpAuthForm() {
   const [step, setStep] = useState<"input" | "otp">("input");
   const [authMethod, setAuthMethod] = useState<string>("");
+  const [countryCode, setCountryCode] = useState("+1");
   const [agreed, setAgreed] = useState(false);
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,18 +27,23 @@ export function OtpAuthForm() {
     
     setIsLoading(true);
     try {
+      const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ auth_method: authMethod }),
+        body: JSON.stringify({ auth_method: finalAuth }),
       });
       if (!res.ok) {
         const errorData = await res.json();
         alert(errorData.error || "Failed to send OTP code.");
         return;
+      }
+      const data = await res.json();
+      if (data.dev_otp) {
+        alert(`Developer OTP Verification Code: ${data.dev_otp}`);
       }
       setStep("otp");
     } catch (err) {
@@ -55,17 +61,18 @@ export function OtpAuthForm() {
 
     setIsLoading(true);
     try {
+      const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_BASE_URL}/api/auth/verify/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ auth_method: authMethod, otp: code }),
+        body: JSON.stringify({ auth_method: finalAuth, otp: code }),
       });
       if (!res.ok) {
         const errorData = await res.json();
-        alert(errorData.error || "Invalid verification code. Use code 1234.");
+        alert(errorData.error || "Invalid verification code.");
         return;
       }
       const data = await res.json();
@@ -145,8 +152,26 @@ export function OtpAuthForm() {
               {/* Dynamic Input (Phone/Email) */}
               <div className="relative flex items-center border border-gray-200 rounded-[6px] h-[52px] bg-white overflow-hidden focus-within:border-black transition-colors">
                 {hasPhoneFormat && (
-                  <div className="h-full px-4 flex items-center justify-center border-r border-gray-200 bg-gray-50/50 text-gray-500 font-medium text-[15px]">
-                    +1
+                  <div className="relative h-full border-r border-gray-200 bg-gray-50/50 flex items-center">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="h-full pl-3 pr-8 text-gray-600 font-medium text-[14px] outline-none bg-transparent cursor-pointer appearance-none"
+                    >
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+91">🇮🇳 +91</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+61">🇦🇺 +61</option>
+                      <option value="+971">🇦🇪 +971</option>
+                      <option value="+81">🇯🇵 +81</option>
+                      <option value="+33">🇫🇷 +33</option>
+                      <option value="+49">🇩🇪 +49</option>
+                      <option value="+966">🇸🇦 +966</option>
+                      <option value="+65">🇸🇬 +65</option>
+                    </select>
+                    <div className="absolute right-2.5 pointer-events-none text-gray-400 text-[10px]">
+                      ▼
+                    </div>
                   </div>
                 )}
                 <input
@@ -208,7 +233,7 @@ export function OtpAuthForm() {
             </p>
             <div className="flex items-center gap-2 mb-6">
               <span className="text-black font-bold text-[15px]">
-                {hasPhoneFormat ? `+1 ${authMethod}` : authMethod}
+                {hasPhoneFormat ? `${countryCode} ${authMethod}` : authMethod}
               </span>
               <button onClick={() => setStep("input")} className="text-gray-500 hover:text-black">
                 <Edit3 className="w-4 h-4" />
