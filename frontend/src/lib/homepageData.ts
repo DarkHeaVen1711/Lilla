@@ -261,7 +261,7 @@ const LOCAL_HOME_PAGE_DATA = {
 export async function getHomePageData(): Promise<HomePageData> {
   try {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/homepage/`, { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/homepage/`, { cache: "no-store" }, 5000);
     if (!res.ok) {
       throw new Error(`Failed to fetch homepage data: ${res.statusText}`);
     }

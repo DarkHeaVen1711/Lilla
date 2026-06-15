@@ -984,7 +984,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 /**
  * Custom fetch wrapper with a timeout to avoid hangs on dead endpoints.
  */
-export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 1500): Promise<Response> {
+export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 5000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1017,7 +1017,7 @@ export async function getProducts(options?: {
       url.searchParams.append("featured", options.featured ? "true" : "false");
     }
 
-    const res = await fetchWithTimeout(url.toString(), { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(url.toString(), { cache: "no-store" }, 5000);
     if (!res.ok) {
       throw new Error(`Failed to fetch products: ${res.statusText}`);
     }
@@ -1052,7 +1052,7 @@ export async function getProducts(options?: {
  */
 export async function getProductBySlug(slug: string): Promise<FrontendProduct | null> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${slug}/`, { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${slug}/`, { cache: "no-store" }, 5000);
     if (res.status === 404) return null;
     if (!res.ok) {
       throw new Error(`Failed to fetch product by slug: ${res.statusText}`);
@@ -1072,7 +1072,7 @@ export async function getProductBySlug(slug: string): Promise<FrontendProduct | 
  */
 export async function getCategories() {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/categories/`, { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/categories/`, { cache: "no-store" }, 5000);
     if (!res.ok) {
       throw new Error(`Failed to fetch categories: ${res.statusText}`);
     }
