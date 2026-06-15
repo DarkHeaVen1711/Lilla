@@ -13,6 +13,8 @@ import "swiper/css";
 import "swiper/css/navigation";
 
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useAuthGate } from "@/lib/authGate";
+import { useStore } from "@/store/useStore";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
 import type { CommerceProduct } from "@/lib/homepageData";
 import imgBackground from "../../images/background.png";
@@ -22,9 +24,12 @@ type BestSellersSectionProps = {
 };
 
 export function BestSellersSection({ products }: BestSellersSectionProps) {
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const withAuthGate = useAuthGate();
+  const zustandAddToCart = useStore((s) => s.addToCart);
   const prevRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
+
 
   return (
     <motion.section
@@ -131,7 +136,14 @@ export function BestSellersSection({ products }: BestSellersSectionProps) {
                     
                     {/* Like Button inside top-right */}
                     <button 
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(product); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        withAuthGate(
+                          "ADD_TO_FAVORITE",
+                          { ...product, quantity: 1 },
+                          () => toggleFavorite(product)
+                        );
+                      }}
                       className="absolute top-4 right-4 z-20 w-[34px] h-[34px] bg-white rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
                       aria-label="Like product"
                     >
