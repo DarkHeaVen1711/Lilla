@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Darker_Grotesque } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Toaster } from "sonner";
 import { CommerceProvider } from "@/components/providers/CommerceProvider";
 import { AnimationProvider } from "@/components/providers/AnimationProvider";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
@@ -48,6 +49,7 @@ export default async function RootLayout({
               columns={homePageData.footer.columns}
             />
             <AuthModal />
+            <Toaster position="bottom-right" richColors closeButton />
           </CommerceProvider>
         </AnimationProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
