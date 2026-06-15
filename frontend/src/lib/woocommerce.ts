@@ -914,6 +914,37 @@ export const MOCK_WOOCOMMERCE_PRODUCTS: WooCommerceProduct[] = [
 ];
 
 /**
+ * Maps a Django API product response to the format expected by the frontend UI.
+ */
+export function mapDjangoProductToFrontend(dp: any): FrontendProduct {
+  const priceNum = parseFloat(dp.price || "0");
+  const regularPriceNum = dp.original_price ? parseFloat(dp.original_price) : 0;
+  const discountStr = dp.discount || undefined;
+
+  return {
+    id: dp.id.toString(),
+    slug: dp.slug,
+    name: dp.name,
+    description: dp.description || "",
+    image: dp.image || "/placeholder.jpg",
+    price: priceNum,
+    originalPrice: regularPriceNum > priceNum ? regularPriceNum : undefined,
+    discount: discountStr,
+    rating: parseFloat(dp.rating || "4.8"),
+    reviews: dp.reviews || 0,
+    category: dp.category_name || "General",
+    expiresOn: dp.expires_on || "28/12/2027",
+    features: dp.features_json || [],
+    skinConcerns: dp.skin_concerns || [],
+    keyIngredients: dp.key_ingredients || [],
+    finish: dp.finish || undefined,
+    applicator: dp.applicator || undefined,
+    shades: dp.shades || [],
+    featured: dp.featured,
+  };
+}
+
+/**
  * Maps a WooCommerce API product response to the format expected by the frontend UI.
  */
 export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): FrontendProduct {
@@ -948,82 +979,113 @@ export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): 
   };
 }
 
-/**
- * WooCommerce API Client Fetch Helpers.
- * 
- * FUTURE INTEGRATION INSTRUCTIONS:
- * 1. Install official WooCommerce REST API package:
- *    `npm install @woocommerce/woocommerce-rest-api`
- * 2. Setup your client keys in .env.local:
- *    WOOCOMMERCE_URL=https://yourstore.com
- *    WOOCOMMERCE_CONSUMER_KEY=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- *    WOOCOMMERCE_CONSUMER_SECRET=cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- * 3. Inside the functions below, initialize WooCommerce API client and swap
- *    the mock database arrays with real WooCommerce endpoints.
- *    For example:
- *    ```
- *    import WooCommerceRestApi from "@woocommerce/woocommerce-rest-api";
- *    const api = new WooCommerceRestApi({
- *      url: process.env.WOOCOMMERCE_URL!,
- *      consumerKey: process.env.WOOCOMMERCE_CONSUMER_KEY!,
- *      consumerSecret: process.env.WOOCOMMERCE_CONSUMER_SECRET!,
- *      version: "wc/v3"
- *    });
- *    const response = await api.get("products", { per_page: 20 });
- *    return response.data.map(mapWooCommerceProductToFrontend);
- *    ```
- */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /**
- * Fetch all products from WooCommerce.
+ * Custom fetch wrapper with a timeout to avoid hangs on dead endpoints.
+ */
+export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 1500): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
+/**
+ * Fetch all products from WooCommerce REST API (wired to Django REST API).
  */
 export async function getProducts(options?: {
   categorySlug?: string;
   limit?: number;
   featured?: boolean;
 }): Promise<FrontendProduct[]> {
+  try {
+    const url = new URL(`${API_BASE_URL}/api/products/`);
+    if (options?.categorySlug) {
+      url.searchParams.append("category", options.categorySlug);
+    }
+    if (options?.featured !== undefined) {
+      url.searchParams.append("featured", options.featured ? "true" : "false");
+    }
 
-  let results = [...MOCK_WOOCOMMERCE_PRODUCTS];
+    const res = await fetchWithTimeout(url.toString(), { cache: "no-store" }, 1500);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch products: ${res.statusText}`);
+    }
+    const data = await res.json();
+    let results = data.map(mapDjangoProductToFrontend);
 
-  if (options?.featured !== undefined) {
-    results = results.filter((p) => p.featured === options.featured);
+    if (options?.limit) {
+      results = results.slice(0, options.limit);
+    }
+    return results;
+  } catch (error) {
+    console.error("Error in getProducts client fetch:", error);
+    // Return mock fallback on error to ensure app doesn't crash completely
+    let results = [...MOCK_WOOCOMMERCE_PRODUCTS];
+    if (options?.featured !== undefined) {
+      results = results.filter((p) => p.featured === options.featured);
+    }
+    if (options?.categorySlug) {
+      results = results.filter((p) =>
+        p.categories.some((c) => c.slug === options.categorySlug)
+      );
+    }
+    if (options?.limit) {
+      results = results.slice(0, options.limit);
+    }
+    return results.map(mapWooCommerceProductToFrontend);
   }
-
-  if (options?.categorySlug) {
-    results = results.filter((p) =>
-      p.categories.some((c) => c.slug === options.categorySlug)
-    );
-  }
-
-  if (options?.limit) {
-    results = results.slice(0, options.limit);
-  }
-
-  return results.map(mapWooCommerceProductToFrontend);
 }
 
 /**
  * Fetch a single product by its slug.
  */
 export async function getProductBySlug(slug: string): Promise<FrontendProduct | null> {
-
-  const product = MOCK_WOOCOMMERCE_PRODUCTS.find((p) => p.slug === slug);
-  if (!product) return null;
-
-  return mapWooCommerceProductToFrontend(product);
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${slug}/`, { cache: "no-store" }, 1500);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(`Failed to fetch product by slug: ${res.statusText}`);
+    }
+    const data = await res.json();
+    return mapDjangoProductToFrontend(data);
+  } catch (error) {
+    console.error(`Error in getProductBySlug for ${slug}:`, error);
+    const product = MOCK_WOOCOMMERCE_PRODUCTS.find((p) => p.slug === slug);
+    if (!product) return null;
+    return mapWooCommerceProductToFrontend(product);
+  }
 }
 
 /**
- * Fetch product categories from WooCommerce.
+ * Fetch product categories.
  */
 export async function getCategories() {
-  const categoryMap = new Map<string, { id: number; name: string; slug: string }>();
-
-  MOCK_WOOCOMMERCE_PRODUCTS.forEach((p) => {
-    p.categories.forEach((cat) => {
-      categoryMap.set(cat.slug, cat);
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/categories/`, { cache: "no-store" }, 1500);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch categories: ${res.statusText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("Error in getCategories:", error);
+    const categoryMap = new Map<string, { id: number; name: string; slug: string }>();
+    MOCK_WOOCOMMERCE_PRODUCTS.forEach((p) => {
+      p.categories.forEach((cat) => {
+        categoryMap.set(cat.slug, cat);
+      });
     });
-  });
-
-  return Array.from(categoryMap.values());
+    return Array.from(categoryMap.values());
+  }
 }
+
