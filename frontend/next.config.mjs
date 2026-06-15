@@ -13,6 +13,8 @@ const nextConfig = {
   },
   experimental: {
     webpackMemoryOptimizations: true,
+    cpus: 1,
+    workerThreads: false,
     optimizePackageImports: [
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
