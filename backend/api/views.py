@@ -14,7 +14,7 @@ from .models import Category, Product, Order, OrderItem, OTPVerification
 from .serializers import CategorySerializer, ProductSerializer, OrderSerializer
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
-PHONE_REGEX = re.compile(r'^\+?[1-9]\d{6,14}$')
+PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
 
 def validate_auth_method(value):
     if not value:
@@ -26,7 +26,7 @@ def validate_auth_method(value):
     else:
         cleaned_phone = re.sub(r'[\s()-]', '', value)
         if not PHONE_REGEX.match(cleaned_phone):
-            return False, "Invalid phone number format. Must contain 7-15 digits, optionally starting with '+'."
+            return False, "Invalid phone number format. Must contain 3-15 digits, optionally starting with '+'."
         return True, "phone"
 
 class CategoryListView(generics.ListAPIView):
