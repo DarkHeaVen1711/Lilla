@@ -822,3 +822,105 @@ export const MOCK_WOOCOMMERCE_PRODUCTS: WooCommerceProduct[] = [
   },
   {
     id: 131,
+    name: "Revitalizing Body Lotion",
+    slug: "revitalizing-body-lotion",
+    type: "simple",
+    status: "publish",
+    featured: false,
+    description: "Moisture locking body lotion with nourishing lipids for sensitive skin barriers.",
+    short_description: "Moisture locking revitalizing body lotion.",
+    price: "70",
+    regular_price: "85",
+    sale_price: "70",
+    on_sale: true,
+    total_sales: 140,
+    stock_status: "instock",
+    average_rating: "4.7",
+    rating_count: 53,
+    categories: [{ id: 11, name: "Daily Essentials", slug: "daily-essentials" }],
+    images: [{ id: 31, src: imgComboBodyCare, name: "Revitalizing Body Lotion", alt: "Revitalizing Body Lotion" }],
+    meta_data: []
+  },
+  {
+    id: 132,
+    name: "Satin Finish Blush",
+    slug: "satin-finish-blush",
+    type: "simple",
+    status: "publish",
+    featured: false,
+    description: "Weightless powder blush that delivers a natural flush with a soft satin finish.",
+    short_description: "Weightless satin powder blush.",
+    price: "48",
+    regular_price: "48",
+    sale_price: "",
+    on_sale: false,
+    total_sales: 195,
+    stock_status: "instock",
+    average_rating: "4.8",
+    rating_count: 86,
+    categories: [{ id: 12, name: "Color Cosmetics", slug: "color-cosmetics" }],
+    images: [{ id: 32, src: imgYouMightLikeBlush, name: "Satin Finish Blush", alt: "Satin Finish Blush" }],
+    meta_data: [
+      { key: "finish", value: "Satin" }
+    ]
+  },
+  {
+    id: 133,
+    name: "Waterproof Mascara",
+    slug: "waterproof-mascara",
+    type: "simple",
+    status: "publish",
+    featured: false,
+    description: "Volumizing waterproof mascara that lasts all day without flaking or smudging.",
+    short_description: "Volumizing waterproof mascara.",
+    price: "32",
+    regular_price: "40",
+    sale_price: "32",
+    on_sale: true,
+    total_sales: 320,
+    stock_status: "instock",
+    average_rating: "4.7",
+    rating_count: 104,
+    categories: [{ id: 12, name: "Color Cosmetics", slug: "color-cosmetics" }],
+    images: [{ id: 33, src: imgMakeupHover5, name: "Waterproof Mascara", alt: "Waterproof Mascara" }],
+    meta_data: [
+      { key: "finish", value: "Waterproof" }
+    ]
+  },
+  {
+    id: 134,
+    name: "Under-eye Brightening Cream",
+    slug: "under-eye-brightening-cream",
+    type: "simple",
+    status: "publish",
+    featured: true,
+    description: "Nourishing eye cream to reduce dark circles, smooth fine lines, and puffiness.",
+    short_description: "Nourishing under-eye brightening cream.",
+    price: "68",
+    regular_price: "68",
+    sale_price: "",
+    on_sale: false,
+    total_sales: 235,
+    stock_status: "instock",
+    average_rating: "4.9",
+    rating_count: 112,
+    categories: [{ id: 11, name: "Daily Essentials", slug: "daily-essentials" }],
+    images: [{ id: 34, src: imgCream, name: "Under-eye Brightening Cream", alt: "Under-eye Brightening Cream" }],
+    meta_data: [
+      { key: "skinConcerns", value: ["Dullness", "Anti-aging"] },
+      { key: "keyIngredients", value: ["Caffeine", "Peptides"] }
+    ]
+  }
+];
+
+/**
+ * Maps a WooCommerce API product response to the format expected by the frontend UI.
+ */
+export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): FrontendProduct {
+  const meta = (key: string) => wpProduct.meta_data.find((m) => m.key === key)?.value;
+
+  const priceNum = parseFloat(wpProduct.price || "0");
+  const regularPriceNum = parseFloat(wpProduct.regular_price || "0");
+  const discountStr = wpProduct.on_sale && regularPriceNum > priceNum
+    ? `-${Math.round(((regularPriceNum - priceNum) / regularPriceNum) * 100)}%`
+    : undefined;
