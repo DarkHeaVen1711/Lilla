@@ -1,0 +1,337 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { StaticImageData } from "next/image";
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+export type ImageSource = StaticImageData | string;
+
+export interface LineItem {
+  id: string;
+  slug: string;
+  name: string;
+  image: ImageSource;
+  price: number;
+  originalPrice?: number;
+  discount?: string;
+  rating?: number;
+  reviews?: number;
+  category?: string;
+  quantity: number;
+}
+
+export interface ProfileFields {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface UserState {
+  token: string;
+  identityString: string;
+  isGuest: boolean;
+  metadata: ProfileFields;
+}
+
+export type AuthModalStage = "PHONE_INPUT" | "EMAIL_INPUT" | "OTP_VERIFICATION";
+export type IntentActionType = "ADD_TO_CART" | "ADD_TO_FAVORITE" | "PROCEED_TO_CHECKOUT";
+export type PaymentMethodType = "COD" | "CARD" | "NETBANKING";
+
+export interface FrozenIntent {
+  actionType: IntentActionType;
+  payload: LineItem;
+  successCallback: () => void;
+}
+
+export interface AddressData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  country: string;
+  address: string;
+  state: string;
+  city: string;
+  zip: string;
+  phone: string;
+}
+
+export interface CardData {
+  nameOnCard: string;
+  cardNumber: string;
+  expiryMonth: string;
+  expiryYear: string;
+  cvv: string;
+}
+
+// ─── Store Shape ─────────────────────────────────────────────────────────────
+
+interface LillaStore {
+  // User Session
+  user: UserState | null;
+  loginUser: (token: string, identityString: string) => void;
+  logoutUser: () => void;
+
+  // Auth Modal State Machine
+  authModal: {
+    isOpen: boolean;
+    stage: AuthModalStage;
+  };
+  openAuthModal: (stage?: AuthModalStage) => void;
+  closeAuthModal: () => void;
+  setAuthModalStage: (stage: AuthModalStage) => void;
+
+  // Cart
+  cart: {
+    items: LineItem[];
+    couponCode: string | null;
+    couponActive: boolean;
+    subtotal: number;
+    discountAmount: number;
+    shippingFee: number;
+    orderTotal: number;
+  };
+  addToCart: (item: Omit<LineItem, "quantity">) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
+  clearCart: () => void;
+  applyCoupon: (code: string) => { success: boolean; message: string };
+
+  // Frozen Intent — guest action interceptor cache
+  frozenIntent: FrozenIntent | null;
+  setFrozenIntent: (intent: FrozenIntent) => void;
+  flushFrozenIntent: () => void; // executes the cached action and clears it
+
+  // Checkout Form
+  checkoutForm: {
+    billingAddress: AddressData;
+    sameAsShipping: boolean;
+    paymentMethod: PaymentMethodType;
+    cardDetails: CardData | null;
+  };
+  updateBillingAddress: (data: Partial<AddressData>) => void;
+  setSameAsShipping: (value: boolean) => void;
+  setPaymentMethod: (method: PaymentMethodType) => void;
+  updateCardDetails: (data: Partial<CardData>) => void;
+  clearCheckoutForm: () => void;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const EMPTY_ADDRESS: AddressData = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  country: "US",
+  address: "",
+  state: "NY",
+  city: "",
+  zip: "",
+  phone: "",
+};
+
+const COUPON_TRYBEAUTY_DISCOUNT = 0.20;
+const FREE_SHIPPING_THRESHOLD = 51;
+const SHIPPING_FEE = 15;
+
+function recalcCart(
+  items: LineItem[],
+  couponActive: boolean
+): { subtotal: number; discountAmount: number; shippingFee: number; orderTotal: number } {
+  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const discountAmount = couponActive ? subtotal * COUPON_TRYBEAUTY_DISCOUNT : 0;
+  const shippingFee = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const orderTotal = subtotal - discountAmount + shippingFee;
+  return { subtotal, discountAmount, shippingFee, orderTotal };
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+export const useStore = create<LillaStore>()(
+  persist(
+    (set, get) => ({
+      // ── User ──────────────────────────────────────────────────────────────
+      user: null,
+
+      loginUser: (token, identityString) => {
+        set({
+          user: {
+            token,
+            identityString,
+            isGuest: false,
+            metadata: {},
+          },
+        });
+      },
+
+      logoutUser: () => set({ user: null }),
+
+      // ── Auth Modal ────────────────────────────────────────────────────────
+      authModal: { isOpen: false, stage: "PHONE_INPUT" },
+
+      openAuthModal: (stage = "PHONE_INPUT") =>
+        set({ authModal: { isOpen: true, stage } }),
+
+      closeAuthModal: () =>
+        set((state) => ({ authModal: { ...state.authModal, isOpen: false } })),
+
+      setAuthModalStage: (stage) =>
+        set((state) => ({ authModal: { ...state.authModal, stage } })),
+
+      // ── Cart ──────────────────────────────────────────────────────────────
+      cart: {
+        items: [],
+        couponCode: null,
+        couponActive: false,
+        subtotal: 0,
+        discountAmount: 0,
+        shippingFee: SHIPPING_FEE,
+        orderTotal: 0,
+      },
+
+      addToCart: (product) =>
+        set((state) => {
+          const existing = state.cart.items.find((i) => i.id === product.id);
+          const items = existing
+            ? state.cart.items.map((i) =>
+                i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+              )
+            : [...state.cart.items, { ...product, quantity: 1 }];
+          const calcs = recalcCart(items, state.cart.couponActive);
+          return { cart: { ...state.cart, items, ...calcs } };
+        }),
+
+      removeFromCart: (itemId) =>
+        set((state) => {
+          const items = state.cart.items.filter((i) => i.id !== itemId);
+          const calcs = recalcCart(items, state.cart.couponActive);
+          return { cart: { ...state.cart, items, ...calcs } };
+        }),
+
+      updateQuantity: (itemId, quantity) =>
+        set((state) => {
+          const items =
+            quantity <= 0
+              ? state.cart.items.filter((i) => i.id !== itemId)
+              : state.cart.items.map((i) =>
+                  i.id === itemId ? { ...i, quantity } : i
+                );
+          const calcs = recalcCart(items, state.cart.couponActive);
+          return { cart: { ...state.cart, items, ...calcs } };
+        }),
+
+      clearCart: () =>
+        set((state) => ({
+          cart: {
+            ...state.cart,
+            items: [],
+            couponCode: null,
+            couponActive: false,
+            subtotal: 0,
+            discountAmount: 0,
+            shippingFee: SHIPPING_FEE,
+            orderTotal: 0,
+          },
+        })),
+
+      applyCoupon: (code) => {
+        const normalized = code.trim().toUpperCase();
+        if (normalized === "TRYBEAUTY") {
+          set((state) => {
+            const calcs = recalcCart(state.cart.items, true);
+            return {
+              cart: {
+                ...state.cart,
+                couponCode: "TRYBEAUTY",
+                couponActive: true,
+                ...calcs,
+              },
+            };
+          });
+          return { success: true, message: "TRYBEAUTY applied! 20% discount activated." };
+        }
+        return { success: false, message: "Invalid coupon code." };
+      },
+
+      // ── Frozen Intent ─────────────────────────────────────────────────────
+      frozenIntent: null,
+
+      setFrozenIntent: (intent) => set({ frozenIntent: intent }),
+
+      flushFrozenIntent: () => {
+        const intent = get().frozenIntent;
+        if (!intent) return;
+        // Execute the cached action
+        if (intent.actionType === "ADD_TO_CART") {
+          get().addToCart(intent.payload);
+        }
+        intent.successCallback();
+        set({ frozenIntent: null });
+      },
+
+      // ── Checkout Form ─────────────────────────────────────────────────────
+      checkoutForm: {
+        billingAddress: EMPTY_ADDRESS,
+        sameAsShipping: true,
+        paymentMethod: "CARD",
+        cardDetails: null,
+      },
+
+      updateBillingAddress: (data) =>
+        set((state) => ({
+          checkoutForm: {
+            ...state.checkoutForm,
+            billingAddress: { ...state.checkoutForm.billingAddress, ...data },
+          },
+        })),
+
+      setSameAsShipping: (value) =>
+        set((state) => ({
+          checkoutForm: { ...state.checkoutForm, sameAsShipping: value },
+        })),
+
+      setPaymentMethod: (method) =>
+        set((state) => ({
+          checkoutForm: { ...state.checkoutForm, paymentMethod: method },
+        })),
+
+      updateCardDetails: (data) =>
+        set((state) => ({
+          checkoutForm: {
+            ...state.checkoutForm,
+            cardDetails: {
+              nameOnCard: "",
+              cardNumber: "",
+              expiryMonth: "",
+              expiryYear: "",
+              cvv: "",
+              ...state.checkoutForm.cardDetails,
+              ...data,
+            },
+          },
+        })),
+
+      clearCheckoutForm: () =>
+        set((state) => ({
+          checkoutForm: {
+            ...state.checkoutForm,
+            billingAddress: EMPTY_ADDRESS,
+            cardDetails: null,
+          },
+        })),
+    }),
+    {
+      name: "lilla-store",
+      // Only persist cart and user — auth modal & frozen intent are ephemeral
+      partialize: (state) => ({
+        user: state.user,
+        cart: state.cart,
+        checkoutForm: {
+          billingAddress: state.checkoutForm.billingAddress,
+          sameAsShipping: state.checkoutForm.sameAsShipping,
+          paymentMethod: state.checkoutForm.paymentMethod,
+          cardDetails: null, // never persist card details
+        },
+      }),
+    }
+  )
+);

@@ -4,16 +4,15 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, ChevronUp, X, Minus, Plus } from "lucide-react";
-import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
 
 export function OrderReviewAccordion() {
   const [isOpen, setIsOpen] = useState(true);
-  const { cartItems, updateQuantity, removeFromCart } = useCommerce();
-
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discount = subtotal * 0.2;
-  const deliveryFee = 15.0;
-  const total = subtotal - discount + deliveryFee;
+  const cartItems = useStore((s) => s.cart.items);
+  const updateQuantity = useStore((s) => s.updateQuantity);
+  const removeFromCart = useStore((s) => s.removeFromCart);
+  const { subtotal, discountAmount, shippingFee, orderTotal, couponActive } = useStore((s) => s.cart);
+  const discount = discountAmount;
 
   return (
     <div className="w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col h-full font-sans">
@@ -86,13 +85,15 @@ export function OrderReviewAccordion() {
               <span>Subtotal</span>
               <span className="text-black font-medium">${subtotal.toFixed(0)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Discount (-20%)</span>
-              <span className="text-brand-accent-red font-medium">-${discount.toFixed(0)}</span>
-            </div>
+            {couponActive && (
+              <div className="flex justify-between text-green-600">
+                <span>TRYBEAUTY (-20%)</span>
+                <span className="font-medium">-${discount.toFixed(0)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Delivery Fee</span>
-              <span className="text-black font-medium">${deliveryFee.toFixed(0)}</span>
+              <span className="text-black font-medium">{shippingFee === 0 ? "FREE" : `$${shippingFee.toFixed(0)}`}</span>
             </div>
           </div>
 
@@ -100,7 +101,7 @@ export function OrderReviewAccordion() {
 
           <div className="flex justify-between items-center mb-6">
             <span className="text-xl font-bold text-black">Total</span>
-            <span className="text-xl font-bold text-black">${total.toFixed(0)}</span>
+            <span className="text-xl font-bold text-black">${orderTotal.toFixed(0)}</span>
           </div>
 
           {/* Checkout Button */}

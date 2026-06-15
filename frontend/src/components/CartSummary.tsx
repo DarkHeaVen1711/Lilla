@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m as motion } from "framer-motion";
-import { X, Percent, ChevronLeft, ChevronRight, Star, Trash2 } from "lucide-react";
+import { X, Percent, ChevronLeft, ChevronRight, Trash2, Tag, CheckCircle2 } from "lucide-react";
 
-import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
 import type { CommerceProduct } from "@/lib/homepageData";
 
@@ -15,17 +15,22 @@ type CartSummaryProps = {
 };
 
 export function CartSummary({ recommendedProducts }: CartSummaryProps) {
-  const { cartItems, removeFromCart, updateQuantity, clearCart } = useCommerce();
+  const { items: cartItems, subtotal, discountAmount, shippingFee, orderTotal, couponCode, couponActive } = useStore((s) => s.cart);
+  const removeFromCart = useStore((s) => s.removeFromCart);
+  const updateQuantity = useStore((s) => s.updateQuantity);
+  const clearCart = useStore((s) => s.clearCart);
+  const applyCoupon = useStore((s) => s.applyCoupon);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponMsg, setCouponMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  // Cart Financials Calculation
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = subtotal * 0.20; // 20% Mock Discount
-  const deliveryFee = subtotal > 51 ? 0 : 15;
-  const total = subtotal - discount + deliveryFee;
-  
   const deliveryThreshold = 51;
   const progress = Math.min((subtotal / deliveryThreshold) * 100, 100);
+
+  const handleApplyCoupon = () => {
+    const result = applyCoupon(couponInput);
+    setCouponMsg({ text: result.message, ok: result.success });
+  };
 
   const scrollLeft = () => {
     if (carouselRef.current) {
@@ -174,41 +179,65 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
               <div className="bg-white rounded-[24px] shadow-[0_15px_40px_rgba(0,0,0,0.06)] border border-gray-50 p-6 lg:p-8 flex flex-col">
                 
                 {/* Coupon Module */}
-                <div className="flex bg-brand-bg-light border border-gray-200 rounded-[10px] p-1 sm:p-1.5 h-[50px] sm:h-[56px] focus-within:border-black transition-colors w-full overflow-hidden">
-                  <div className="flex items-center px-2 sm:px-3 text-gray-400 shrink-0">
-                    <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-                  </div>
-                  <input type="text" placeholder="Apply Coupons" className="flex-1 min-w-0 w-full outline-none text-black font-semibold text-sm sm:text-[18px] placeholder:text-gray-400 bg-transparent" />
-                  <button className="bg-black text-white px-4 sm:px-6 rounded-md font-bold text-sm sm:text-[18px] hover:bg-gray-800 transition-colors shrink-0">Apply</button>
+              <div className={`flex bg-brand-bg-light border rounded-[10px] p-1 sm:p-1.5 h-[50px] sm:h-[56px] focus-within:border-black transition-colors w-full overflow-hidden ${couponActive ? 'border-green-400 bg-green-50/40' : 'border-gray-200'}`}>
+                <div className="flex items-center px-2 sm:px-3 text-gray-400 shrink-0">
+                  {couponActive ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" /> : <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />}
                 </div>
-                <Link href="#" className="text-brand-secondary text-sm sm:text-[17px] font-semibold mt-3.5 hover:underline">
-                  View applicable coupons &gt;
-                </Link>
+                <input
+                  type="text"
+                  placeholder="Apply Coupons (try TRYBEAUTY)"
+                  value={couponActive ? couponCode || "" : couponInput}
+                  onChange={(e) => { setCouponInput(e.target.value); setCouponMsg(null); }}
+                  readOnly={couponActive}
+                  className="flex-1 min-w-0 w-full outline-none text-black font-semibold text-sm sm:text-[18px] placeholder:text-gray-400 bg-transparent"
+                />
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={couponActive}
+                  className="bg-black text-white px-4 sm:px-6 rounded-md font-bold text-sm sm:text-[18px] hover:bg-gray-800 transition-colors shrink-0 disabled:bg-gray-300"
+                >
+                  {couponActive ? "✓" : "Apply"}
+                </button>
+              </div>
+              {couponMsg && (
+                <p className={`text-sm font-semibold mt-1.5 ${couponMsg.ok ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>
+              )}
+              {!couponMsg && (
+                <p className="text-brand-secondary text-sm sm:text-[17px] font-semibold mt-3.5">
+                  Try code: <span className="font-black">TRYBEAUTY</span> for 20% off!
+                </p>
+              )}
   
                 <hr className="border-gray-100 my-7" />
   
                 {/* Receipt Matrix */}
-                <div className="flex flex-col gap-4 text-[18px] sm:text-[20px] font-semibold">
-                  <div className="flex justify-between text-gray-500">
-                    <span>Subtotal</span>
-                    <span className="text-black font-bold">${subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Discount (-20%)</span>
-                    <span className="text-brand-secondary font-extrabold">-${discount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Delivery Fee</span>
-                    <span className="text-black font-bold">${deliveryFee.toFixed(2)}</span>
-                  </div>
+              <div className="flex flex-col gap-4 text-[18px] sm:text-[20px] font-semibold">
+                <div className="flex justify-between text-gray-500">
+                  <span>Subtotal</span>
+                  <span className="text-black font-bold">${subtotal.toFixed(2)}</span>
                 </div>
+                {couponActive && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="flex justify-between text-green-600"
+                  >
+                    <span className="flex items-center gap-1.5"><Tag className="w-4 h-4" /> TRYBEAUTY (-20%)</span>
+                    <span className="font-extrabold">-${discountAmount.toFixed(2)}</span>
+                  </motion.div>
+                )}
+                <div className="flex justify-between text-gray-500">
+                  <span>Delivery Fee</span>
+                  <span className="text-black font-bold">{shippingFee === 0 ? <span className="text-green-600">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
+                </div>
+              </div>
   
                 <hr className="border-gray-100 my-7" />
   
                 <div className="flex justify-between items-center mb-8">
-                  <span className="text-[20px] sm:text-[24px] font-extrabold text-black">Total</span>
-                  <span className="text-[28px] sm:text-[36px] font-black text-black leading-none">${total.toFixed(2)}</span>
-                </div>
+                <span className="text-[20px] sm:text-[24px] font-extrabold text-black">Total</span>
+                <span className="text-[28px] sm:text-[36px] font-black text-black leading-none">${orderTotal.toFixed(2)}</span>
+              </div>
   
                 <Link href="/checkout" className="w-full h-[50px] sm:h-[56px] bg-black text-white rounded-xl text-[20px] sm:text-[24px] font-bold hover:bg-gray-800 transition-colors flex items-center justify-center">
                   Checkout

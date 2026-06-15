@@ -45,4 +45,8 @@ backend/__pycache__/
 backend/**/*.pyc
 backend/db.sqlite3
 backend/staticfiles/
-backend/media/
+backend/media/
+
+# agent skills (not application code)
+.agents/
+
