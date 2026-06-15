@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Star, Heart } from "lucide-react";
+import { toast } from "sonner";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
 import type { CommerceProduct } from "@/lib/homepageData";
 import imgCart from "@/images/cart.png";
 
@@ -24,8 +27,39 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product = FALLBACK_PRODUCT }: ProductCardProps) {
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const addToCart = useStore((s) => s.addToCart);
+  const withAuthGate = useAuthGate();
   const favorite = isFavorite(product.id);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    withAuthGate(
+      "ADD_TO_CART",
+      { ...product, quantity: 1 },
+      () => {
+        addToCart(product);
+        toast.success("Added to cart!", { description: product.name, duration: 2000 });
+      }
+    );
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    withAuthGate(
+      "ADD_TO_FAVORITE",
+      { ...product, quantity: 1 },
+      () => {
+        toggleFavorite(product);
+        toast.success(favorite ? "Removed from favourites" : "Saved!", {
+          description: product.name,
+          duration: 1800,
+        });
+      }
+    );
+  };
 
   return (
     <div className="w-[280px] bg-brand-bg-gray rounded-[24px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col font-sans">
@@ -47,11 +81,7 @@ export function ProductCard({ product = FALLBACK_PRODUCT }: ProductCardProps) {
         {/* Favorite Button */}
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleFavorite(product);
-          }}
+          onClick={handleToggleFavorite}
           className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/95 text-black flex items-center justify-center shadow-sm hover:scale-110 transition-transform backdrop-blur"
           aria-label="Add to favourites"
         >
@@ -81,8 +111,8 @@ export function ProductCard({ product = FALLBACK_PRODUCT }: ProductCardProps) {
             )}
           </div>
           <button
-            onClick={() => addToCart(product)}
-            className="bg-black text-white hover:bg-gray-800 transition-colors text-xs font-bold px-4 py-2 rounded-full uppercase flex items-center gap-1.5 shadow-sm"
+            onClick={handleAddToCart}
+            className="bg-black text-white hover:bg-gray-800 active:scale-95 transition-all text-xs font-bold px-4 py-2 rounded-full uppercase flex items-center gap-1.5 shadow-sm"
           >
             <Image src={imgCart} alt="Cart" className="w-3.5 h-3.5 object-contain invert" />
             Add
