@@ -924,3 +924,106 @@ export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): 
   const discountStr = wpProduct.on_sale && regularPriceNum > priceNum
     ? `-${Math.round(((regularPriceNum - priceNum) / regularPriceNum) * 100)}%`
     : undefined;
+
+  return {
+    id: wpProduct.id.toString(),
+    slug: wpProduct.slug,
+    name: wpProduct.name,
+    description: wpProduct.description,
+    image: wpProduct.images[0]?.src || "/placeholder.jpg",
+    price: priceNum,
+    originalPrice: regularPriceNum > priceNum ? regularPriceNum : undefined,
+    discount: discountStr,
+    rating: parseFloat(wpProduct.average_rating || "4.8"),
+    reviews: wpProduct.rating_count || 108,
+    category: wpProduct.categories[0]?.name || "General",
+    expiresOn: meta("expiresOn") || "28/12/2027",
+    features: meta("features") || [],
+    skinConcerns: meta("skinConcerns") || [],
+    keyIngredients: meta("keyIngredients") || [],
+    finish: meta("finish") || undefined,
+    applicator: meta("applicator") || undefined,
+    shades: meta("shades") || [],
+    featured: wpProduct.featured,
+  };
+}
+
+/**
+ * WooCommerce API Client Fetch Helpers.
+ * 
+ * FUTURE INTEGRATION INSTRUCTIONS:
+ * 1. Install official WooCommerce REST API package:
+ *    `npm install @woocommerce/woocommerce-rest-api`
+ * 2. Setup your client keys in .env.local:
+ *    WOOCOMMERCE_URL=https://yourstore.com
+ *    WOOCOMMERCE_CONSUMER_KEY=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ *    WOOCOMMERCE_CONSUMER_SECRET=cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * 3. Inside the functions below, initialize WooCommerce API client and swap
+ *    the mock database arrays with real WooCommerce endpoints.
+ *    For example:
+ *    ```
+ *    import WooCommerceRestApi from "@woocommerce/woocommerce-rest-api";
+ *    const api = new WooCommerceRestApi({
+ *      url: process.env.WOOCOMMERCE_URL!,
+ *      consumerKey: process.env.WOOCOMMERCE_CONSUMER_KEY!,
+ *      consumerSecret: process.env.WOOCOMMERCE_CONSUMER_SECRET!,
+ *      version: "wc/v3"
+ *    });
+ *    const response = await api.get("products", { per_page: 20 });
+ *    return response.data.map(mapWooCommerceProductToFrontend);
+ *    ```
+ */
+
+/**
+ * Fetch all products from WooCommerce.
+ */
+export async function getProducts(options?: {
+  categorySlug?: string;
+  limit?: number;
+  featured?: boolean;
+}): Promise<FrontendProduct[]> {
+
+  let results = [...MOCK_WOOCOMMERCE_PRODUCTS];
+
+  if (options?.featured !== undefined) {
+    results = results.filter((p) => p.featured === options.featured);
+  }
+
+  if (options?.categorySlug) {
+    results = results.filter((p) =>
+      p.categories.some((c) => c.slug === options.categorySlug)
+    );
+  }
+
+  if (options?.limit) {
+    results = results.slice(0, options.limit);
+  }
+
+  return results.map(mapWooCommerceProductToFrontend);
+}
+
+/**
+ * Fetch a single product by its slug.
+ */
+export async function getProductBySlug(slug: string): Promise<FrontendProduct | null> {
+
+  const product = MOCK_WOOCOMMERCE_PRODUCTS.find((p) => p.slug === slug);
+  if (!product) return null;
+
+  return mapWooCommerceProductToFrontend(product);
+}
+
+/**
+ * Fetch product categories from WooCommerce.
+ */
+export async function getCategories() {
+  const categoryMap = new Map<string, { id: number; name: string; slug: string }>();
+
+  MOCK_WOOCOMMERCE_PRODUCTS.forEach((p) => {
+    p.categories.forEach((cat) => {
+      categoryMap.set(cat.slug, cat);
+    });
+  });
+
+  return Array.from(categoryMap.values());
+}
