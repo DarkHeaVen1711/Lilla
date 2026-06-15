@@ -62,32 +62,32 @@
   /* Single canonical container max-width */
   --container-width: 1440px;
 
-  /* === Central Theme Color Tokens === */
-  --brand-primary: #E85A4F;
-  --brand-primary-light: #FDE7EA;
-  --brand-primary-hover: #FAD1D6;
-  --brand-secondary: #D46B7A;
-  --brand-secondary-light: rgba(212, 107, 122, 0.05);
-  --brand-bg-pink: #FDF7F7;
-  --brand-bg-cream: #FDFBF9;
-  --brand-bg-gray: #FAFAFA;
-  --brand-bg-gray-light: #F5F5F5;
-  --brand-bg-image: #efeeef;
-  --brand-bg-light: #F9F9F9;
-  --brand-bg-warm: #faf7f4;
-  --brand-bg-cool-gray: #F3F3F5;
-  --brand-bg-trust: #fdf6f5;
-  --brand-bg-checkout-thumb: #F6F5F5;
-  --brand-accent-red: #FF5A50;
-  --brand-secondary-hover: #c35b6a;
-  --brand-bg-hero-default: #D3D3D3;
-  --brand-switcher-active: #000000;
-  --brand-switcher-inactive: #D1D5DB;
-  --brand-rating-star: #F5C518;
-  --brand-text-dark: #111111;
-  --brand-line-gray: #8C8C8C;
-  --brand-disabled-gray: #BDBDBD;
-  --brand-border-light: #E5E7EB;
+  /* === Central Theme Color Tokens (Warm Luxury Palette) === */
+  --brand-primary: #5E1914;               /* Velvet Bordeaux - deep luxurious wine red */
+  --brand-primary-light: #FAECEB;         /* Soft Vintage Rose Blush */
+  --brand-primary-hover: #F2D5D2;         /* Blush Rose Accent */
+  --brand-secondary: #8E4A49;             /* Tuscan Rose - rich terracotta rose */
+  --brand-secondary-light: rgba(142, 74, 73, 0.04);
+  --brand-bg-pink: #FAF4F4;               /* Delicate Rosewater Tint */
+  --brand-bg-cream: #FAF7F2;              /* Warm Luxe Alabaster Cream */
+  --brand-bg-gray: #F8F8F8;               /* Sleek Platinum Gray */
+  --brand-bg-gray-light: #F2F2F2;
+  --brand-bg-image: #EEECEB;
+  --brand-bg-light: #FCFBF9;              /* Soft Linen White */
+  --brand-bg-warm: #F7F2EC;               /* Warm Cashmere */
+  --brand-bg-cool-gray: #F4F4F6;
+  --brand-bg-trust: #FAF5F3;
+  --brand-bg-checkout-thumb: #F5EFEA;
+  --brand-accent-red: #A73C35;            /* Satin Bordeaux Accent */
+  --brand-secondary-hover: #753C3B;
+  --brand-bg-hero-default: #E6DFD5;       /* Warm Greige */
+  --brand-switcher-active: #1C1917;
+  --brand-switcher-inactive: #E7E5E4;
+  --brand-rating-star: #CBB279;           /* Brushed Gold rating accent */
+  --brand-text-dark: #1C1917;             /* Stone Black for high-end text */
+  --brand-line-gray: #78716C;
+  --brand-disabled-gray: #D6D3D1;
+  --brand-border-light: #E7E5E4;
 }
 
 .dark {

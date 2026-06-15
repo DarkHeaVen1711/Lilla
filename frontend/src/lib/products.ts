@@ -191,7 +191,7 @@ export const UNIVERSAL_PRODUCTS: Product[] = [
     slug: "red-bean-refreshing-pore-mask",
     name: "Red Bean Refreshing pore mask",
     description: "Beauty of Joseon Red Bean Mask with 30% red bean and kaolin washes away excess sebum. exfoliates for bright, clean, and refreshed skin.",
-    image: imgPhoto,
+    image: "/images/Red_Pore.png",
     price: 120,
     originalPrice: 150,
     rating: 4.8,
