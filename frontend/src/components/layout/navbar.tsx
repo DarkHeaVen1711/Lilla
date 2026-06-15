@@ -3,11 +3,12 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Search, User, X, Menu } from "lucide-react";
+import { Heart, Search, User, X, Menu, LogOut, LogIn } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { m as motion, AnimatePresence } from "framer-motion";
 
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
 import logo from "@/images/logo.png";
 import beautyLogo from "@/images/beauty.png";
 import type { HomeSectionLink } from "@/lib/homepageData";
@@ -64,6 +65,10 @@ const CustomCartIcon = ({ className }: { className?: string }) => (
 export function Navbar({ links }: NavbarProps) {
   const { cartItems, cartCount, favoriteCount, removeFromCart, updateQuantity } = useCommerce();
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const user = useStore((s) => s.user);
+  const logoutUser = useStore((s) => s.logoutUser);
+  const openAuthModal = useStore((s) => s.openAuthModal);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [activeHover, setActiveHover] = useState<"skin" | "makeup" | null>(null);
   const [mobileSkinOpen, setMobileSkinOpen] = useState(false);
@@ -252,13 +257,50 @@ export function Navbar({ links }: NavbarProps) {
           >
             <Search className="w-6 h-6" />
           </Link>
-          <Link
-            href="/login"
-            aria-label="Account"
-            className="hidden lg:flex hover:opacity-70 transition-opacity"
-          >
-            <User className="w-6 h-6" />
-          </Link>
+          {/* User Avatar / Auth — Desktop */}
+          <div className="relative hidden lg:flex">
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  aria-label="Account menu"
+                >
+                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold uppercase">
+                    {user.identityString[0]}
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {showUserMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-lg border border-gray-100 p-2 z-50"
+                    >
+                      <p className="px-3 py-2 text-xs text-gray-500 font-medium truncate">{user.identityString}</p>
+                      <div className="h-px bg-gray-100 my-1" />
+                      <button
+                        onClick={() => { logoutUser(); localStorage.removeItem("lilla-auth-token"); setShowUserMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" /> Sign out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <button
+                onClick={() => openAuthModal("PHONE_INPUT")}
+                aria-label="Sign in"
+                className="hover:opacity-70 transition-opacity"
+              >
+                <LogIn className="w-6 h-6" />
+              </button>
+            )}
+          </div>
           <Link
             href="/favorites"
             aria-label="Wishlist"
