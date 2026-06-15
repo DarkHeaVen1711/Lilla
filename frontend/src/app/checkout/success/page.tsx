@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { OrderConfirmationCard } from "@/components/checkout/OrderConfirmationCard";
@@ -9,11 +10,25 @@ import { MOCK_WOOCOMMERCE_PRODUCTS, mapWooCommerceProductToFrontend } from "@/li
 
 export default function OrderConfirmationPage() {
   const { cartItems } = useCommerce();
+  const [order, setOrder] = useState<any>(null);
+
+  useEffect(() => {
+    const lastOrder = localStorage.getItem("lilla-last-order");
+    if (lastOrder) {
+      try {
+        setOrder(JSON.parse(lastOrder));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
   
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discount = subtotal * 0.2;
   const deliveryFee = 15.0;
-  const total = subtotal > 0 ? (subtotal - discount + deliveryFee).toFixed(2) : "0.00";
+  const cartTotal = subtotal > 0 ? (subtotal - discount + deliveryFee).toFixed(2) : "0.00";
+
+  const total = order ? order.total_price : cartTotal;
   const recommendedProducts = MOCK_WOOCOMMERCE_PRODUCTS.slice(0, 8).map(mapWooCommerceProductToFrontend);
 
   return (

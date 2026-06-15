@@ -26,9 +26,23 @@ export function OtpAuthForm() {
     
     setIsLoading(true);
     try {
-      // Simulate API call to send OTP
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ auth_method: authMethod }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to send OTP code.");
+        return;
+      }
       setStep("otp");
+    } catch (err) {
+      console.error("Auth send OTP error:", err);
+      alert("Error contacting the auth server. Please check if your backend is running.");
     } finally {
       setIsLoading(false);
     }
@@ -41,9 +55,26 @@ export function OtpAuthForm() {
 
     setIsLoading(true);
     try {
-      // Simulate API call to verify OTP
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ auth_method: authMethod, otp: code }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.error || "Invalid verification code. Use code 1234.");
+        return;
+      }
+      const data = await res.json();
+      localStorage.setItem("lilla-auth-token", data.token);
+      localStorage.setItem("lilla-user", JSON.stringify(data.user));
       window.location.href = "/";
+    } catch (err) {
+      console.error("Auth verify OTP error:", err);
+      alert("Error verifying OTP code.");
     } finally {
       setIsLoading(false);
     }

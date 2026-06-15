@@ -3,6 +3,8 @@ import type { HeroConfig } from "@/components/home/HeroSwitcher";
 import {
   getProducts,
   getProductBySlug as getProductBySlugWc,
+  mapDjangoProductToFrontend,
+  fetchWithTimeout,
 } from "./woocommerce";
 
 
@@ -257,36 +259,66 @@ const LOCAL_HOME_PAGE_DATA = {
 };
 
 export async function getHomePageData(): Promise<HomePageData> {
-  const allProducts = await getProducts();
+  try {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/homepage/`, { cache: "no-store" }, 1500);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch homepage data: ${res.statusText}`);
+    }
+    const data = await res.json();
+    
+    // Map backend products to frontend format
+    const bestSellers = (data.bestSellers || []).map(mapDjangoProductToFrontend);
+    const dealProducts = (data.dealOfTheDay?.products || []).map(mapDjangoProductToFrontend);
+    const comboProducts = (data.discoverCombos?.products || []).map(mapDjangoProductToFrontend);
+    
+    return {
+      ...LOCAL_HOME_PAGE_DATA,
+      ...data,
+      bestSellers,
+      dealOfTheDay: {
+        title: data.dealOfTheDay?.title || "Deal Of The day",
+        products: dealProducts,
+      },
+      discoverCombos: {
+        title: data.discoverCombos?.title || "Discover Our Combos",
+        products: comboProducts,
+      },
+      featuredProducts: bestSellers.slice(0, 5),
+    };
+  } catch (error) {
+    console.error("Error fetching live homepage data, falling back:", error);
+    
+    // Fallback logic
+    const allProducts = await getProducts();
+    const bestSellers = allProducts.filter((p) => p.rating >= 4.8).slice(0, 6);
+    const dealOfTheDayProducts = allProducts.slice(7, 10);
+    const comboProducts = allProducts
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes("set") ||
+          p.name.toLowerCase().includes("box"),
+      )
+      .slice(0, 4);
 
-  // Filter/curate products for home page sections dynamically
-  const bestSellers = allProducts.filter((p) => p.rating >= 4.8).slice(0, 6);
-  const dealOfTheDayProducts = allProducts.slice(7, 10);
-  const comboProducts = allProducts
-    .filter(
-      (p) =>
-        p.name.toLowerCase().includes("set") ||
-        p.name.toLowerCase().includes("box"),
-    )
-    .slice(0, 4);
-
-  return {
-    ...LOCAL_HOME_PAGE_DATA,
-    bestSellers,
-    dealOfTheDay: {
-      title: "Deal Of The day",
-      products:
-        dealOfTheDayProducts.length > 0
-          ? dealOfTheDayProducts
-          : allProducts.slice(0, 3),
-    },
-    featuredProducts: allProducts.filter(p => p.featured).slice(0, 5),
-    discoverCombos: {
-      title: "Discover Our Combos",
-      products:
-        comboProducts.length > 0 ? comboProducts : allProducts.slice(0, 4),
-    },
-  };
+    return {
+      ...LOCAL_HOME_PAGE_DATA,
+      bestSellers,
+      dealOfTheDay: {
+        title: "Deal Of The day",
+        products:
+          dealOfTheDayProducts.length > 0
+            ? dealOfTheDayProducts
+            : allProducts.slice(0, 3),
+      },
+      featuredProducts: allProducts.filter(p => p.featured).slice(0, 5),
+      discoverCombos: {
+        title: "Discover Our Combos",
+        products:
+          comboProducts.length > 0 ? comboProducts : allProducts.slice(0, 4),
+      },
+    };
+  }
 }
 
 export async function getProductBySlug(
@@ -294,3 +326,4 @@ export async function getProductBySlug(
 ): Promise<CommerceProduct | null> {
   return getProductBySlugWc(slug);
 }
+
