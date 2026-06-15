@@ -73,8 +73,8 @@ class HomepageDataView(APIView):
             "announcementBarText": "Free Delivery on orders above $100!",
             "navLinks": [
                 { "href": "/#home", "label": "Home" },
-                { "href": "/#skin", "label": "Skin" },
-                { "href": "/#makeup", "label": "Makeup" },
+                { "href": "/skin", "label": "Skin" },
+                { "href": "/makeup", "label": "Makeup" },
                 { "href": "/#about", "label": "About Us" }
             ],
             "heroSlides": [
@@ -90,9 +90,9 @@ class HomepageDataView(APIView):
                 {
                     "id": 2,
                     "layoutType": "image",
-                    "portraitImage": "http://localhost:8000/static/images/hero2_1.png",  # Placeholder reference
+                    "portraitImage": "/images/hero2_1.png",  # Placeholder reference
                     "portraitAlt": "Skin care routine close-up",
-                    "productImage": "http://localhost:8000/static/images/hero2_2.png",
+                    "productImage": "/images/hero2_2.png",
                     "productAlt": "Skincare product",
                     "backgroundColor": "bg-white"
                 }
@@ -108,11 +108,11 @@ class HomepageDataView(APIView):
                 "products": ProductSerializer(combo_products, many=True).data
             },
             "skinConcerns": [
-                { "label": "Acne", "image": "http://localhost:8000/static/images/close-up-woman-with-acne-posing 1.png", "href": "/shop/acne" },
-                { "label": "Pigmentation", "image": "http://localhost:8000/static/images/image 193.png", "href": "/shop/pigmentation" },
-                { "label": "Signs of aging", "image": "http://localhost:8000/static/images/image 194.png", "href": "/shop/anti-aging" },
-                { "label": "Extreme dryness", "image": "http://localhost:8000/static/images/close-up-skin-pores-face-care-routine 1.png", "href": "/shop/dry-skin" },
-                { "label": "Damaged barrier", "image": "http://localhost:8000/static/images/close-up-beautiful-woman-portrait 1.png", "href": "/shop/barrier-repair" }
+                { "label": "Acne", "image": "/images/close-up-woman-with-acne-posing 1.png", "href": "/shop/acne" },
+                { "label": "Pigmentation", "image": "/images/image 193.png", "href": "/shop/pigmentation" },
+                { "label": "Signs of aging", "image": "/images/image 194.png", "href": "/shop/anti-aging" },
+                { "label": "Extreme dryness", "image": "/images/close-up-skin-pores-face-care-routine 1.png", "href": "/shop/dry-skin" },
+                { "label": "Damaged barrier", "image": "/images/close-up-beautiful-woman-portrait 1.png", "href": "/shop/barrier-repair" }
             ],
             "trustBadges": [
                 { "line1": "Clinically", "line2": "Tested" },
