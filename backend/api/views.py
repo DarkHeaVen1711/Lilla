@@ -13,12 +13,12 @@ class CategoryListView(generics.ListAPIView):
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.select_related('category').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
 
     def get_queryset(self):
-        queryset = Product.objects.all()
+        queryset = Product.objects.select_related('category').all()
         category_slug = self.request.query_params.get('category', None)
         featured = self.request.query_params.get('featured', None)
         concern = self.request.query_params.get('concern', None)
@@ -38,7 +38,7 @@ class HomepageDataView(APIView):
     def get(self, request, *args, **kwargs):
         # Fetch categories and products dynamically from the database
         all_categories = Category.objects.all()
-        best_sellers = Product.objects.filter(featured=True)[:6]
+        best_sellers = Product.objects.select_related('category').filter(featured=True)[:6]
         
         # Pull categories for frame19 and concerns
         frame19 = []
@@ -51,22 +51,22 @@ class HomepageDataView(APIView):
             })
 
         # Prepare products for specific homepage sections
-        deal_products = Product.objects.filter(id__in=[
+        deal_products = Product.objects.select_related('category').filter(id__in=[
             "ceo-afterglow-vitamin-c-serum", 
             "radiance-pink-daily-serum", 
             "soft-glam-facial-oil"
         ])[:3]
         if not deal_products.exists():
-            deal_products = Product.objects.all()[:3]
+            deal_products = Product.objects.select_related('category').all()[:3]
 
-        combo_products = Product.objects.filter(id__in=[
+        combo_products = Product.objects.select_related('category').filter(id__in=[
             "hydration-ritual-set", 
             "brightening-glow-set", 
             "soft-glam-makeup-set",
             "body-care-set"
         ])[:4]
         if not combo_products.exists():
-            combo_products = Product.objects.all()[:4]
+            combo_products = Product.objects.select_related('category').all()[:4]
 
         # Standard layout response matching Next.js structures
         data = {
@@ -214,6 +214,6 @@ class OrderCreateView(generics.CreateAPIView):
 
 
 class OrderDetailView(generics.RetrieveAPIView):
-    queryset = Order.objects.all()
+    queryset = Order.objects.prefetch_related('items').all()
     serializer_class = OrderSerializer
     lookup_field = 'id'
