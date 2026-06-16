@@ -50,6 +50,9 @@ class Product(models.Model):
     # Active state
     is_active = models.BooleanField(default=True)
 
+    # Inventory stock
+    stock = models.PositiveIntegerField(default=100)
+
     def __str__(self):
         return self.name
 
