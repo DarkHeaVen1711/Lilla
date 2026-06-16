@@ -181,6 +181,48 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@lilla.com')
 
 # ==============================================================================
+# Structured JSON Logging Configuration
+# ==============================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'api.logging_formatters.JSONFormatter',
+        },
+        'simple': {
+            'format': '[%(asctime)s] %(levelname)s %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'security_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+        'transaction_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'loggers': {
+        'lilla.security': {
+            'handlers': ['security_console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'lilla.transaction': {
+            'handlers': ['transaction_console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# ==============================================================================
 # Sentry Telemetry Configuration (Observability & Privacy Filters)
 # ==============================================================================
 try:

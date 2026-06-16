@@ -2,6 +2,9 @@ import time
 import os
 import re
 import random
+import logging
+
+security_logger = logging.getLogger('lilla.security')
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -437,12 +440,20 @@ class VerifyOTPView(APIView):
         cached_otp = cache.get(cache_key)
         
         if not cached_otp:
+            security_logger.warning(
+                "OTP verification failed: Expired or not requested",
+                extra={'context': {'identity': identity, 'reason': 'expired_or_not_found', 'event': 'otp_expired'}}
+            )
             return Response(
                 {"detail": "OTP has expired or was not requested."},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
         if cached_otp != submitted_otp:
+            security_logger.warning(
+                "OTP verification failed: Incorrect code submitted",
+                extra={'context': {'identity': identity, 'reason': 'incorrect_otp', 'event': 'otp_incorrect'}}
+            )
             return Response(
                 {"detail": "Incorrect OTP code."},
                 status=status.HTTP_400_BAD_REQUEST
