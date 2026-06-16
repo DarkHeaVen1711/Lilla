@@ -323,11 +323,11 @@ class OrderCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Order.objects.prefetch_related('items').filter(user=self.request.user)
+            return Order.objects.select_related('user').prefetch_related('items').filter(user=self.request.user)
         
         user_id = self.request.query_params.get('user_identifier')
         if user_id:
-            return Order.objects.prefetch_related('items').filter(user_identifier=user_id)
+            return Order.objects.select_related('user').prefetch_related('items').filter(user_identifier=user_id)
         return Order.objects.none()
 
     def perform_create(self, serializer):
@@ -340,7 +340,7 @@ class OrderCreateView(generics.ListCreateAPIView):
 
 
 class OrderDetailView(generics.RetrieveAPIView):
-    queryset = Order.objects.prefetch_related('items').all()
+    queryset = Order.objects.select_related('user').prefetch_related('items').all()
     serializer_class = OrderSerializer
     lookup_field = 'id'
 
