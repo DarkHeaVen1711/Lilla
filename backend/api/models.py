@@ -59,6 +59,26 @@ class Product(models.Model):
         ]
 
 
+class Combo(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+    image = models.CharField(max_length=500, blank=True, null=True)
+    products = models.ManyToManyField(Product, related_name="combos")
+    bundle_price = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    is_promotional = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['slug']),
+        ]
+
+
 class OTPVerification(models.Model):
     auth_method = models.CharField(max_length=255, db_index=True)
     otp_code = models.CharField(max_length=10)
