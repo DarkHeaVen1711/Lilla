@@ -7,6 +7,7 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
 from api.models import Category, Product, Combo
+from unittest.mock import patch, MagicMock
 
 class CatalogAPITests(APITestCase):
 
@@ -205,3 +206,99 @@ class PasswordlessAuthAPITests(APITestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json()["detail"], "OTP has expired or was not requested.")
+
+
+class SyncThread:
+    def __init__(self, target, *args, **kwargs):
+        self.target = target
+        self.args = args
+        self.kwargs = kwargs
+        self.daemon = True
+
+    def start(self):
+        self.target(*self.args, **self.kwargs)
+
+
+@patch('threading.Thread', SyncThread)
+class RevalidationSignalTests(APITestCase):
+
+    @patch('requests.post')
+    def test_product_save_triggers_revalidate(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        cat = Category.objects.create(name="Skin", slug="skin")
+        prod = Product.objects.create(
+            id="test-signal-prod",
+            slug="signal-prod",
+            name="Signal Product",
+            price=15.00,
+            category=cat
+        )
+
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        
+        self.assertEqual(args[0], "http://localhost:3000/api/revalidate")
+        self.assertEqual(kwargs['json']['tags'], ["products", "product-signal-prod"])
+        self.assertEqual(kwargs['headers']['x-revalidate-secret'], "default_revalidation_secret")
+
+    @patch('requests.post')
+    def test_product_delete_triggers_revalidate(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        cat = Category.objects.create(name="Skin", slug="skin")
+        prod = Product.objects.create(
+            id="test-signal-prod-del",
+            slug="signal-prod-del",
+            name="Signal Product Del",
+            price=15.00,
+            category=cat
+        )
+        
+        mock_post.reset_mock()
+
+        prod.delete()
+
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['json']['tags'], ["products", "product-signal-prod-del"])
+
+    @patch('requests.post')
+    def test_combo_save_triggers_revalidate(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        combo = Combo.objects.create(
+            name="Signal Combo",
+            slug="signal-combo",
+            bundle_price=50.00
+        )
+
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['json']['tags'], ["combos", "combo-signal-combo"])
+
+    @patch('requests.post')
+    def test_combo_delete_triggers_revalidate(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        combo = Combo.objects.create(
+            name="Signal Combo Del",
+            slug="signal-combo-del",
+            bundle_price=50.00
+        )
+        
+        mock_post.reset_mock()
+
+        combo.delete()
+
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['json']['tags'], ["combos", "combo-signal-combo-del"])
