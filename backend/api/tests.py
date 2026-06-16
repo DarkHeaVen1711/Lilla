@@ -6,7 +6,7 @@ from django.test import override_settings
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
-from api.models import Category, Product, Combo
+from api.models import Category, Product, Combo, Order
 from unittest.mock import patch, MagicMock
 
 class CatalogAPITests(APITestCase):
@@ -302,3 +302,72 @@ class RevalidationSignalTests(APITestCase):
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         self.assertEqual(kwargs['json']['tags'], ["combos", "combo-signal-combo-del"])
+
+
+class CheckoutConcurrencyAndStockTests(APITestCase):
+
+    def setUp(self):
+        self.category = Category.objects.create(name="Skin", slug="skin")
+        self.product = Product.objects.create(
+            id="test-stock-prod",
+            slug="stock-prod",
+            name="Stock Product",
+            price=10.00,
+            category=self.category,
+            stock=5,
+            is_active=True
+        )
+        self.url = reverse('order-create')
+
+    def test_successful_order_deducts_stock(self):
+        payload = {
+            "user_identifier": "test@example.com",
+            "shipping_name": "Test User",
+            "shipping_address": "123 Test St",
+            "shipping_city": "Test City",
+            "shipping_postal_code": "12345",
+            "total_price": "23.00",
+            "items": [
+                {
+                    "product_id": "test-stock-prod",
+                    "product_name": "Stock Product",
+                    "price": "10.00",
+                    "quantity": 1
+                }
+            ]
+        }
+        
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify stock was deducted
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 4)
+
+    def test_insufficient_stock_fails_and_rolls_back(self):
+        payload = {
+            "user_identifier": "test@example.com",
+            "shipping_name": "Test User",
+            "shipping_address": "123 Test St",
+            "shipping_city": "Test City",
+            "shipping_postal_code": "12345",
+            "total_price": "63.00",
+            "items": [
+                {
+                    "product_id": "test-stock-prod",
+                    "product_name": "Stock Product",
+                    "price": "10.00",
+                    "quantity": 6
+                }
+            ]
+        }
+        
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Verify stock was NOT deducted
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+        # Verify no order or order items were created
+        self.assertEqual(Order.objects.filter(user_identifier="test@example.com").count(), 0)
+

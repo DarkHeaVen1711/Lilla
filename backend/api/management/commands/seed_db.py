@@ -607,7 +607,9 @@ class Command(BaseCommand):
                     # Promotional fields
                     "is_deal_of_the_day": is_deal,
                     "deal_expires_at": deal_expiry,
-                    "is_active": True
+                    "is_active": True,
+                    # Stock field
+                    "stock": 5 if p_data["id"] == "red-bean-refreshing-pore-mask" else 100
                 }
             )
             if created:

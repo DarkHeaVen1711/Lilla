@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 from .models import Category, Product, Order, OrderItem, Combo
 
@@ -101,11 +102,31 @@ class OrderSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop('items')
+        
+        # Lock products and check/deduct stock first
+        for item_data in items_data:
+            product_id = item_data.get('product_id')
+            quantity = item_data.get('quantity')
+            
+            # Row-level locking to prevent checkout race conditions
+            product = Product.objects.select_for_update().get(id=product_id)
+            
+            if product.stock < quantity:
+                raise serializers.ValidationError(
+                    f"Insufficient stock for product '{product.name}'. Available: {product.stock}, Requested: {quantity}."
+                )
+            
+            product.stock -= quantity
+            product.save()
+            
+        # Create order and items
         order = Order.objects.create(**validated_data)
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
+            
         return order
 
 
