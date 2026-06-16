@@ -45,10 +45,12 @@ export function AuthModal() {
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // ── Phase 3 State ────────────────────────────────────────────────────────
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState("");
   const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -73,7 +75,7 @@ export function AuthModal() {
     // Reset all local form state after animation
     setTimeout(() => {
       setAuthValue("");
-      setOtp(["", "", "", ""]);
+      setOtp(["", "", "", "", "", ""]);
       setSendError("");
       setVerifyError("");
       setDevOtp(null);
@@ -88,18 +90,15 @@ export function AuthModal() {
     setSendError("");
     setDevOtp(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/request-otp/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auth_method: finalAuthMethod }),
+        body: JSON.stringify({ identity: finalAuthMethod }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setSendError(data.error || "Failed to send OTP. Please try again.");
+        setSendError(data.detail || data.error || "Failed to send OTP. Please try again.");
         return;
-      }
-      if (data.dev_otp) {
-        setDevOtp(data.dev_otp);
       }
       setAuthModalStage("OTP_VERIFICATION");
     } catch {
@@ -113,20 +112,20 @@ export function AuthModal() {
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
       // Paste support — distribute digits across boxes
-      const digits = value.replace(/\D/g, "").slice(0, 4).split("");
+      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
       const newOtp = [...otp];
       digits.forEach((d, i) => {
-        if (index + i < 4) newOtp[index + i] = d;
+        if (index + i < 6) newOtp[index + i] = d;
       });
       setOtp(newOtp);
-      const focusIdx = Math.min(index + digits.length, 3);
+      const focusIdx = Math.min(index + digits.length, 5);
       otpRefs[focusIdx].current?.focus();
       return;
     }
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    if (value && index < 3) otpRefs[index + 1].current?.focus();
+    if (value && index < 5) otpRefs[index + 1].current?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -139,37 +138,48 @@ export function AuthModal() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
-    if (code.length !== 4) return;
+    if (code.length !== 6) return;
     setVerifyLoading(true);
     setVerifyError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify/`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auth_method: finalAuthMethod, otp: code }),
+        body: JSON.stringify({ identity: finalAuthMethod, otp: code }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setVerifyError(data.error || "Invalid code. Please try again.");
+        setVerifyError(data.detail || data.error || "Invalid code. Please try again.");
         return;
       }
-      // Write session token into store + localStorage (for API calls)
-      loginUser(data.token, finalAuthMethod);
-      localStorage.setItem("lilla-auth-token", data.token);
+
+      // Write session tokens into secure HTTP-only cookies
+      const cookieRes = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access: data.access, refresh: data.refresh }),
+      });
+
+      if (!cookieRes.ok) {
+        throw new Error("Failed to initialize secure session cookies.");
+      }
+
+      // Write user details into store + localStorage (omitting direct token storage)
+      loginUser(finalAuthMethod);
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
 
       // Close modal, then flush the frozen intent (e.g. complete the add-to-cart)
       handleClose();
       setTimeout(() => flushFrozenIntent(), 100);
-    } catch {
-      setVerifyError("Server error during verification. Please retry.");
+    } catch (err: any) {
+      setVerifyError(err.message || "Server error during verification. Please retry.");
     } finally {
       setVerifyLoading(false);
     }
   };
 
   const isOtpVerificationStage = authModal.stage === "OTP_VERIFICATION";
-  const otpComplete = otp.join("").length === 4;
+  const otpComplete = otp.join("").length === 6;
 
   if (!authModal.isOpen) return null;
 

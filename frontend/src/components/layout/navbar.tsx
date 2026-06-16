@@ -282,7 +282,16 @@ export function Navbar({ links }: NavbarProps) {
                       <p className="px-3 py-2 text-xs text-gray-500 font-medium truncate">{user.identityString}</p>
                       <div className="h-px bg-gray-100 my-1" />
                       <button
-                        onClick={() => { logoutUser(); localStorage.removeItem("lilla-auth-token"); setShowUserMenu(false); }}
+                        onClick={async () => {
+                          logoutUser();
+                          localStorage.removeItem("lilla-auth-token");
+                          try {
+                            await fetch("/api/auth/session", { method: "DELETE" });
+                          } catch (err) {
+                            console.error("Error clearing session cookie:", err);
+                          }
+                          setShowUserMenu(false);
+                        }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <LogOut className="w-4 h-4" /> Sign out

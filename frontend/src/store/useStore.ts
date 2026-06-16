@@ -68,7 +68,7 @@ export interface CardData {
 interface LillaStore {
   // User Session
   user: UserState | null;
-  loginUser: (token: string, identityString: string) => void;
+  loginUser: (identityString: string) => void;
   logoutUser: () => void;
 
   // Auth Modal State Machine
@@ -152,10 +152,10 @@ export const useStore = create<LillaStore>()(
       // ── User ──────────────────────────────────────────────────────────────
       user: null,
 
-      loginUser: (token, identityString) => {
+      loginUser: (identityString) => {
         set({
           user: {
-            token,
+            token: "",
             identityString,
             isGuest: false,
             metadata: {},

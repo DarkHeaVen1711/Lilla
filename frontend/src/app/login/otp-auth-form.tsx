@@ -11,10 +11,12 @@ export function OtpAuthForm() {
   const [authMethod, setAuthMethod] = useState<string>("");
   const [countryCode, setCountryCode] = useState("+1");
   const [agreed, setAgreed] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   
   const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -29,21 +31,17 @@ export function OtpAuthForm() {
     try {
       const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/request-otp/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ auth_method: finalAuth }),
+        body: JSON.stringify({ identity: finalAuth }),
       });
       if (!res.ok) {
         const errorData = await res.json();
-        alert(errorData.error || "Failed to send OTP code.");
+        alert(errorData.detail || errorData.error || "Failed to send OTP code.");
         return;
-      }
-      const data = await res.json();
-      if (data.dev_otp) {
-        alert(`Developer OTP Verification Code: ${data.dev_otp}`);
       }
       setStep("otp");
     } catch (err) {
@@ -57,31 +55,44 @@ export function OtpAuthForm() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
-    if (code.length !== 4) return;
+    if (code.length !== 6) return;
 
     setIsLoading(true);
     try {
       const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify/`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ auth_method: finalAuth, otp: code }),
+        body: JSON.stringify({ identity: finalAuth, otp: code }),
       });
       if (!res.ok) {
         const errorData = await res.json();
-        alert(errorData.error || "Invalid verification code.");
+        alert(errorData.detail || errorData.error || "Invalid verification code.");
         return;
       }
       const data = await res.json();
-      localStorage.setItem("lilla-auth-token", data.token);
+      
+      // Save tokens in secure HTTP-only cookies
+      const cookieRes = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ access: data.access, refresh: data.refresh }),
+      });
+      
+      if (!cookieRes.ok) {
+        throw new Error("Failed to initialize secure session cookies.");
+      }
+
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
       window.location.href = "/";
-    } catch (err) {
+    } catch (err: any) {
       console.error("Auth verify OTP error:", err);
-      alert("Error verifying OTP code.");
+      alert(err.message || "Error verifying OTP code.");
     } finally {
       setIsLoading(false);
     }
@@ -90,14 +101,14 @@ export function OtpAuthForm() {
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
       // Handle paste
-      const pasted = value.slice(0, 4).split("");
+      const pasted = value.replace(/\D/g, "").slice(0, 6).split("");
       const newOtp = [...otp];
       pasted.forEach((char, i) => {
-        if (index + i < 4) newOtp[index + i] = char;
+        if (index + i < 6) newOtp[index + i] = char;
       });
       setOtp(newOtp);
       // Focus last filled
-      const focusIndex = Math.min(index + pasted.length, 3);
+      const focusIndex = Math.min(index + pasted.length, 5);
       otpRefs[focusIndex].current?.focus();
       return;
     }
@@ -107,7 +118,7 @@ export function OtpAuthForm() {
     setOtp(newOtp);
 
     // Auto focus next
-    if (value && index < 3) {
+    if (value && index < 5) {
       otpRefs[index + 1].current?.focus();
     }
   };
@@ -263,7 +274,7 @@ export function OtpAuthForm() {
 
               <button
                 type="submit"
-                disabled={otp.join("").length !== 4 || isLoading}
+                disabled={otp.join("").length !== 6 || isLoading}
                 className="mt-2 w-full h-[52px] flex items-center justify-center text-white text-[16px] font-semibold transition-colors disabled:bg-brand-disabled-gray disabled:cursor-not-allowed bg-black hover:bg-gray-800"
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify OTP"}
