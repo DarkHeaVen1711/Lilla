@@ -63,6 +63,7 @@ export default async function Home() {
       <DealOfTheDaySection
         products={homePageData.dealOfTheDay.products}
         title={homePageData.dealOfTheDay.title}
+        expiresAtUtc={homePageData.dealOfTheDay.expiresAtUtc}
       />
       <SkinAndMakeupSwiper />
       <FeaturedProductsSection 

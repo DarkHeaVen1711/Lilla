@@ -945,6 +945,39 @@ export function mapDjangoProductToFrontend(dp: any): FrontendProduct {
 }
 
 /**
+ * Maps a Django API combo response to the format expected by the frontend UI.
+ */
+export function mapDjangoComboToFrontendProduct(combo: any): FrontendProduct {
+  const priceNum = parseFloat(combo.bundle_price || "0");
+  
+  // Sum of original prices of products in the combo
+  const originalPriceSum = combo.products?.reduce((sum: number, p: any) => sum + parseFloat(p.price || "0"), 0) || 0;
+  const discountStr = originalPriceSum > priceNum 
+    ? `-${Math.round(((originalPriceSum - priceNum) / originalPriceSum) * 100)}%` 
+    : undefined;
+
+  // Use the image of the first product if the combo doesn't have its own image
+  const image = combo.image || combo.products?.[0]?.image || "/placeholder.jpg";
+
+  return {
+    id: `combo-${combo.id}`,
+    slug: combo.slug,
+    name: combo.name,
+    description: combo.description || "",
+    image: image,
+    price: priceNum,
+    originalPrice: originalPriceSum > priceNum ? originalPriceSum : undefined,
+    discount: discountStr,
+    rating: 5.0,
+    reviews: 42,
+    category: "Combos",
+    features: [],
+    skinConcerns: [],
+    keyIngredients: [],
+  };
+}
+
+/**
  * Maps a WooCommerce API product response to the format expected by the frontend UI.
  */
 export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): FrontendProduct {

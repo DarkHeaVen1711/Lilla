@@ -12,46 +12,51 @@ import type { CommerceProduct } from "@/lib/homepageData";
 type DealOfTheDaySectionProps = {
   title: string;
   products: CommerceProduct[];
+  expiresAtUtc?: string;
 };
 
 export function DealOfTheDaySection({
   title,
   products,
+  expiresAtUtc,
 }: DealOfTheDaySectionProps) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
-    hours: 15,
-    minutes: 45,
-    seconds: 30,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        let { days, hours, minutes, seconds } = prev;
-        if (seconds > 0) {
-          seconds--;
-        } else {
-          seconds = 59;
-          if (minutes > 0) {
-            minutes--;
-          } else {
-            minutes = 59;
-            if (hours > 0) {
-              hours--;
-            } else {
-              hours = 23;
-              if (days > 0) {
-                days--;
-              }
-            }
-          }
-        }
-        return { days, hours, minutes, seconds };
-      });
-    }, 1000);
+    let targetDate: Date;
+    if (expiresAtUtc) {
+      targetDate = new Date(expiresAtUtc);
+    } else {
+      // Fallback target: 15h 45m 30s
+      targetDate = new Date();
+      targetDate.setHours(targetDate.getHours() + 15);
+      targetDate.setMinutes(targetDate.getMinutes() + 45);
+      targetDate.setSeconds(targetDate.getSeconds() + 30);
+    }
+
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const difference = targetDate.getTime() - now.getTime();
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+      setTimeLeft({ days, hours, minutes, seconds });
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [expiresAtUtc]);
 
   const { addToCart, toggleFavorite, isFavorite } = useCommerce();
 

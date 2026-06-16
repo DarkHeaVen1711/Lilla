@@ -4,6 +4,7 @@ import {
   getProducts,
   getProductBySlug as getProductBySlugWc,
   mapDjangoProductToFrontend,
+  mapDjangoComboToFrontendProduct,
   fetchWithTimeout,
 } from "./woocommerce";
 
@@ -77,6 +78,7 @@ export type HomePageData = {
   dealOfTheDay: {
     title: string;
     products: CommerceProduct[];
+    expiresAtUtc?: string;
   };
   featuredProducts: CommerceProduct[];
   discoverCombos: {
@@ -259,30 +261,63 @@ const LOCAL_HOME_PAGE_DATA = {
 };
 
 export async function getHomePageData(): Promise<HomePageData> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  
+  // 1. Fetch dynamic homepage elements (banners, categories)
+  let homepageConfig: any = {};
   try {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/homepage/`, { cache: "no-store" }, 5000);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch homepage data: ${res.statusText}`);
+    if (res.ok) {
+      homepageConfig = await res.json();
     }
-    const data = await res.json();
-    
-    // Map backend products to frontend format
-    const bestSellers = (data.bestSellers || []).map(mapDjangoProductToFrontend);
-    const dealProducts = (data.dealOfTheDay?.products || []).map(mapDjangoProductToFrontend);
-    const comboProducts = (data.discoverCombos?.products || []).map(mapDjangoProductToFrontend);
+  } catch (err) {
+    console.error("Error fetching homepage config:", err);
+  }
+
+  // 2. Fetch active Deal of the Day
+  let dealProducts: CommerceProduct[] = [];
+  let expiresAtUtc: string | undefined;
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/catalog/deal-of-the-day/`, { cache: "no-store" }, 5000);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.product) {
+        dealProducts = [mapDjangoProductToFrontend(data.product)];
+        expiresAtUtc = data.expires_at_utc;
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching deal of the day:", err);
+  }
+
+  // 3. Fetch active promotional Combos
+  let comboProducts: CommerceProduct[] = [];
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/catalog/active-combos/`, { cache: "no-store" }, 5000);
+    if (res.ok) {
+      const data = await res.json();
+      comboProducts = (data || []).map(mapDjangoComboToFrontendProduct);
+    }
+  } catch (err) {
+    console.error("Error fetching active combos:", err);
+  }
+
+  try {
+    // If the dynamic homepageConfig loaded, map bestSellers
+    const bestSellers = (homepageConfig.bestSellers || []).map(mapDjangoProductToFrontend);
     
     return {
       ...LOCAL_HOME_PAGE_DATA,
-      ...data,
+      ...homepageConfig,
       bestSellers,
       dealOfTheDay: {
-        title: data.dealOfTheDay?.title || "Deal Of The day",
-        products: dealProducts,
+        title: homepageConfig.dealOfTheDay?.title || "Deal Of The day",
+        products: dealProducts.length > 0 ? dealProducts : (homepageConfig.dealOfTheDay?.products || []).map(mapDjangoProductToFrontend),
+        expiresAtUtc: expiresAtUtc,
       },
       discoverCombos: {
-        title: data.discoverCombos?.title || "Discover Our Combos",
-        products: comboProducts,
+        title: homepageConfig.discoverCombos?.title || "Discover Our Combos",
+        products: comboProducts.length > 0 ? comboProducts : (homepageConfig.discoverCombos?.products || []).map(mapDjangoProductToFrontend),
       },
       featuredProducts: bestSellers.slice(0, 5),
     };
