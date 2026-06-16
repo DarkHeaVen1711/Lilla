@@ -1,6 +1,9 @@
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.models import User
+from django.test import override_settings
+from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
 from api.models import Category, Product, Combo
@@ -122,3 +125,41 @@ class CatalogAPITests(APITestCase):
         self.assertEqual(data['product']['slug'], 'product-two')
         # Check expiration date is in the response and is in UTC (ISO format)
         self.assertTrue(data['expires_at_utc'].endswith('+00:00') or data['expires_at_utc'].endswith('Z'))
+
+
+@override_settings(CACHES={
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+})
+class PasswordlessAuthAPITests(APITestCase):
+
+    def setUp(self):
+        cache.clear()
+        
+    def test_request_otp_success_email(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "testuser@example.com"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['identity'], "testuser@example.com")
+        
+        self.assertTrue(User.objects.filter(username="testuser@example.com").exists())
+        
+        cached_otp = cache.get("otp:testuser@example.com")
+        self.assertIsNotNone(cached_otp)
+        self.assertEqual(len(cached_otp), 6)
+        self.assertTrue(cached_otp.isdigit())
+
+    def test_request_otp_success_phone(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "+1234567890"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        cached_otp = cache.get("otp:+1234567890")
+        self.assertIsNotNone(cached_otp)
+        self.assertEqual(len(cached_otp), 6)
+
+    def test_request_otp_invalid_identity(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "invalid-format"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

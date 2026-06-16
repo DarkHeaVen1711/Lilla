@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView, AuthLoginView, AuthVerifyView,
-    OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView
+    OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
+    RequestOTPView
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ urlpatterns = [
     path('homepage/', HomepageDataView.as_view(), name='homepage-data'),
     path('auth/login/', AuthLoginView.as_view(), name='auth-login'),
     path('auth/verify/', AuthVerifyView.as_view(), name='auth-verify'),
+    path('auth/request-otp/', RequestOTPView.as_view(), name='auth-request-otp'),
     path('orders/', OrderCreateView.as_view(), name='order-create'),
     path('orders/<uuid:id>/', OrderDetailView.as_view(), name='order-detail'),
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
