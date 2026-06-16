@@ -128,4 +128,12 @@ class OTPRequestSerializer(serializers.Serializer):
         return value
 
 
+class OTPVerifySerializer(serializers.Serializer):
+    identity = serializers.CharField(required=True)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)
 
+    def validate_otp(self, value):
+        value = value.strip()
+        if not value.isdigit():
+            raise serializers.ValidationError("OTP must contain digits only.")
+        return value

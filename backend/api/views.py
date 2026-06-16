@@ -20,7 +20,7 @@ from .models import Category, Product, Order, OrderItem, OTPVerification, Combo
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
-    OTPRequestSerializer
+    OTPRequestSerializer, OTPVerifySerializer
 )
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
@@ -413,3 +413,48 @@ class RequestOTPView(APIView):
             "identity": identity
         }, status=status.HTTP_200_OK)
 
+
+class VerifyOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = OTPVerifySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        identity = serializer.validated_data['identity']
+        submitted_otp = serializer.validated_data['otp']
+        
+        cache_key = f"otp:{identity}"
+        cached_otp = cache.get(cache_key)
+        
+        if not cached_otp:
+            return Response(
+                {"detail": "OTP has expired or was not requested."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if cached_otp != submitted_otp:
+            return Response(
+                {"detail": "Incorrect OTP code."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        cache.delete(cache_key)
+        
+        try:
+            user = User.objects.get(username=identity)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        }, status=status.HTTP_200_OK)

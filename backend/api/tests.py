@@ -163,3 +163,45 @@ class PasswordlessAuthAPITests(APITestCase):
         url = reverse('auth-request-otp')
         response = self.client.post(url, {"identity": "invalid-format"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+    def test_verify_otp_success(self):
+        url_req = reverse('auth-request-otp')
+        self.client.post(url_req, {"identity": "verifyuser@example.com"})
+        
+        cached_otp = cache.get("otp:verifyuser@example.com")
+        self.assertIsNotNone(cached_otp)
+        
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "verifyuser@example.com",
+            "otp": cached_otp
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertIn("access", data)
+        self.assertIn("refresh", data)
+        self.assertEqual(data["user"]["username"], "verifyuser@example.com")
+        
+        self.assertIsNone(cache.get("otp:verifyuser@example.com"))
+
+    def test_verify_otp_incorrect(self):
+        url_req = reverse('auth-request-otp')
+        self.client.post(url_req, {"identity": "wrongotp@example.com"})
+        
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "wrongotp@example.com",
+            "otp": "000000"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", response.json())
+        
+    def test_verify_otp_expired(self):
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "expireduser@example.com",
+            "otp": "123456"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()["detail"], "OTP has expired or was not requested.")
