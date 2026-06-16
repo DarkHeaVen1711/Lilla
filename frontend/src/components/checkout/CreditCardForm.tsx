@@ -42,12 +42,9 @@ export function CreditCardForm() {
         })),
       };
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const token = typeof window !== "undefined" ? localStorage.getItem("lilla-auth-token") : null;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Token ${token}`;
 
-      const res = await fetch(`${API_BASE_URL}/api/orders/`, {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers,
         body: JSON.stringify(orderPayload),
