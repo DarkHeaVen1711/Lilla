@@ -22,6 +22,7 @@ from .serializers import (
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
     OTPRequestSerializer, OTPVerifySerializer
 )
+from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
 PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
@@ -392,6 +393,8 @@ class DealOfTheDayView(APIView):
 
 
 class RequestOTPView(APIView):
+    throttle_classes = [RequestOTPThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = OTPRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -420,6 +423,8 @@ class RequestOTPView(APIView):
 
 
 class VerifyOTPView(APIView):
+    throttle_classes = [VerifyOTPThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = OTPVerifySerializer(data=request.data)
         if not serializer.is_valid():
