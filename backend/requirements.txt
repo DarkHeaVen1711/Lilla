@@ -4,3 +4,6 @@ django-cors-headers>=4.0
 dj-database-url>=2.1
 psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
+redis>=5.0
+django-redis>=5.4
+djangorestframework-simplejwt>=5.3
