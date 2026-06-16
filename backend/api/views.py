@@ -12,9 +12,12 @@ from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
-from .models import Category, Product, Order, OrderItem, OTPVerification
-from .serializers import CategorySerializer, ProductSerializer, OrderSerializer
+from django.db.models import Q, Prefetch
+from .models import Category, Product, Order, OrderItem, OTPVerification, Combo
+from .serializers import (
+    CategorySerializer, ProductSerializer, OrderSerializer,
+    CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer
+)
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
 PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
@@ -335,3 +338,45 @@ class OrderDetailView(generics.RetrieveAPIView):
     queryset = Order.objects.prefetch_related('items').all()
     serializer_class = OrderSerializer
     lookup_field = 'id'
+
+
+class CategoryWithProductsListView(generics.ListAPIView):
+    serializer_class = CategoryWithProductsSerializer
+
+    def get_queryset(self):
+        active_products = Product.objects.filter(is_active=True).select_related('category')
+        return Category.objects.prefetch_related(
+            Prefetch('products', queryset=active_products)
+        )
+
+
+class ActiveCombosListView(generics.ListAPIView):
+    serializer_class = ComboSerializer
+
+    def get_queryset(self):
+        combo_products = Product.objects.all().select_related('category')
+        return Combo.objects.filter(is_active=True, is_promotional=True).prefetch_related(
+            Prefetch('products', queryset=combo_products)
+        )
+
+
+class DealOfTheDayView(APIView):
+    def get(self, request, *args, **kwargs):
+        now = timezone.now()
+        product = Product.objects.filter(
+            is_deal_of_the_day=True,
+            deal_expires_at__gt=now,
+            is_active=True
+        ).select_related('category').first()
+
+        if not product:
+            return Response(
+                {"detail": "No active deal of the day found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = NestedProductSerializer(product, context={'request': request})
+        return Response({
+            "product": serializer.data,
+            "expires_at_utc": product.deal_expires_at.isoformat()
+        })
