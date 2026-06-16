@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, Order, OrderItem
+from .models import Category, Product, Order, OrderItem, Combo
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +13,35 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
+        fields = '__all__'
+
+
+class NestedProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True)
+
+    class Meta:
+        model = Product
+        fields = '__all__'
+
+
+class CategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug', 'image', 'products']
+
+    def get_products(self, obj):
+        # Accesses cached prefetched products if prefetch_related was run, avoiding N+1 queries.
+        return NestedProductSerializer(obj.products.all(), many=True, context=self.context).data
+
+
+class ComboSerializer(serializers.ModelSerializer):
+    products = NestedProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Combo
         fields = '__all__'
 
 

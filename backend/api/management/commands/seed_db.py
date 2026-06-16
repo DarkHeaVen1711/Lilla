@@ -1,5 +1,7 @@
+from datetime import timedelta
+from django.utils import timezone
 from django.core.management.base import BaseCommand
-from api.models import Category, Product
+from api.models import Category, Product, Combo
 
 class Command(BaseCommand):
     help = 'Seeds categories and products into the database'
@@ -550,9 +552,33 @@ class Command(BaseCommand):
             }
         ]
 
+        now = timezone.now()
         for p_data in products_data:
             cat_slug = p_data.pop("category_slug")
             cat = categories_by_slug.get(cat_slug)
+            
+            # Add premium skincare defaults
+            ingredients = "Water, Glycerin, Butylene Glycol, Caprylic/Capric Triglyceride, 1,2-Hexanediol, Niacinamide."
+            steps = ["Cleanse skin thoroughly.", "Apply moderate amount evenly.", "Gently pat for absorption."]
+            skin_types = ["Dry", "Normal", "Sensitive"]
+            
+            # Enrich specific products with premium skincare details
+            if p_data["id"] == "red-bean-refreshing-pore-mask":
+                ingredients = "Red Bean Extract 30%, Kaolin Clay, Glycerin, Water, Butylene Glycol."
+                steps = ["Wash face.", "Apply evenly avoiding eyes.", "Leave for 10-15 minutes.", "Wash with warm water."]
+                skin_types = ["Oily", "Combination"]
+            elif p_data["id"] == "radiance-pink-serum":
+                ingredients = "Pink Pearl Extract, Niacinamide, Hyaluronic Acid, Water, Glycerin."
+                steps = ["After toner, apply 2-3 drops.", "Smooth over face and neck.", "Pat gently."]
+                skin_types = ["Dull", "Dry", "Combination"]
+            
+            # Setup Deal of the Day for specific product
+            is_deal = False
+            deal_expiry = None
+            if p_data["id"] == "red-bean-refreshing-pore-mask":
+                is_deal = True
+                deal_expiry = now + timedelta(days=1)
+                
             p, created = Product.objects.update_or_create(
                 id=p_data["id"],
                 defaults={
@@ -573,10 +599,69 @@ class Command(BaseCommand):
                     "key_ingredients": p_data.get("key_ingredients", []),
                     "finish": p_data.get("finish"),
                     "applicator": p_data.get("applicator"),
-                    "shades": p_data.get("shades", [])
+                    "shades": p_data.get("shades", []),
+                    # Skincare fields
+                    "ingredients": ingredients,
+                    "application_steps": steps,
+                    "skin_types": skin_types,
+                    # Promotional fields
+                    "is_deal_of_the_day": is_deal,
+                    "deal_expires_at": deal_expiry,
+                    "is_active": True
                 }
             )
             if created:
                 self.stdout.write(f'Created Product: {p.name}')
+
+        # 3. Create Combos
+        self.stdout.write('Seeding combos...')
+        
+        combos_data = [
+            {
+                "name": "Skincare Glow Combo",
+                "slug": "skincare-glow-combo",
+                "description": "Double formulation to clear pores and hydrate skin for an active, bright look.",
+                "image": "/images/magnific_create-a-premium-lilaa-hy_2981158217 1.png",
+                "bundle_price": 200.00,
+                "is_active": True,
+                "is_promotional": True,
+                "product_ids": ["red-bean-refreshing-pore-mask", "radiance-pink-serum"]
+            },
+            {
+                "name": "Satin Glow Makeup Combo",
+                "slug": "satin-glow-makeup-combo",
+                "description": "High gloss lips and satin flush cheeks to give a premium dewy finish.",
+                "image": "/images/ChatGPT Image May 14, 2026, 05_32_30 PM 1.png",
+                "bundle_price": 75.00,
+                "is_active": True,
+                "is_promotional": True,
+                "product_ids": ["lip-gloss", "satin-finish-blush"]
+            }
+        ]
+
+        for combo_data in combos_data:
+            p_ids = combo_data.pop("product_ids")
+            combo, created = Combo.objects.update_or_create(
+                slug=combo_data["slug"],
+                defaults={
+                    "name": combo_data["name"],
+                    "description": combo_data["description"],
+                    "image": combo_data["image"],
+                    "bundle_price": combo_data["bundle_price"],
+                    "is_active": combo_data["is_active"],
+                    "is_promotional": combo_data["is_promotional"]
+                }
+            )
+            # Add products to Many-to-Many
+            combo.products.clear()
+            for pid in p_ids:
+                try:
+                    product = Product.objects.get(id=pid)
+                    combo.products.add(product)
+                except Product.DoesNotExist:
+                    pass
+            combo.save()
+            if created:
+                self.stdout.write(f'Created Combo: {combo.name}')
 
         self.stdout.write(self.style.SUCCESS('Database seeding completed successfully!'))
