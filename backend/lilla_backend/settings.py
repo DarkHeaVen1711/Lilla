@@ -179,3 +179,45 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@lilla.com')
+
+# ==============================================================================
+# Sentry Telemetry Configuration (Observability & Privacy Filters)
+# ==============================================================================
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    def before_send_sentry(event, hint):
+        # Prevent leaking raw secrets to telemetry frames
+        request = event.get('request', {})
+        
+        # Scrub request body parameters
+        data = request.get('data', {})
+        if isinstance(data, dict):
+            for sensitive_key in ['otp', 'password', 'token', 'access', 'refresh']:
+                if sensitive_key in data:
+                    data[sensitive_key] = '[SCRUBBED]'
+        
+        # Scrub authorization and session headers
+        headers = request.get('headers', {})
+        if isinstance(headers, dict):
+            for sensitive_header in ['Authorization', 'Cookie', 'Set-Cookie', 'authorization']:
+                if sensitive_header in headers:
+                    headers[sensitive_header] = '[SCRUBBED]'
+                sensitive_lower = sensitive_header.lower()
+                if sensitive_lower in headers:
+                    headers[sensitive_lower] = '[SCRUBBED]'
+                    
+        return event
+
+    sentry_sdk.init(
+        dsn=os.getenv('SENTRY_DSN'),
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+        before_send=before_send_sentry
+    )
+    print("[TELEMETRY] Sentry initialization complete with privacy scrubs.")
+except ImportError:
+    print("[TELEMETRY] Sentry-sdk not found, skipping initialization.")
+
