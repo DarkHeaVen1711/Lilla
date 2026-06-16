@@ -652,6 +652,7 @@ class Command(BaseCommand):
                     "is_promotional": combo_data["is_promotional"]
                 }
             )
+            # Add products to Many-to-Many
             combo.products.clear()
             for pid in p_ids:
                 try:

@@ -33,6 +33,7 @@ class CategoryWithProductsSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'image', 'products']
 
     def get_products(self, obj):
+        # Accesses cached prefetched products if prefetch_related was run, avoiding N+1 queries.
         return NestedProductSerializer(obj.products.all(), many=True, context=self.context).data
 
 

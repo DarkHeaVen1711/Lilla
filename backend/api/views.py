@@ -344,6 +344,8 @@ class CategoryWithProductsListView(generics.ListAPIView):
     serializer_class = CategoryWithProductsSerializer
 
     def get_queryset(self):
+        # Optimization: Fetch products and their category in a single query
+        # to prevent N+1 serialization queries for category_name and category_slug.
         active_products = Product.objects.filter(is_active=True).select_related('category')
         return Category.objects.prefetch_related(
             Prefetch('products', queryset=active_products)
@@ -354,6 +356,8 @@ class ActiveCombosListView(generics.ListAPIView):
     serializer_class = ComboSerializer
 
     def get_queryset(self):
+        # Optimization: Prefetch products using select_related('category')
+        # to ensure no N+1 query is made during nested serialization.
         combo_products = Product.objects.all().select_related('category')
         return Combo.objects.filter(is_active=True, is_promotional=True).prefetch_related(
             Prefetch('products', queryset=combo_products)
@@ -363,6 +367,7 @@ class ActiveCombosListView(generics.ListAPIView):
 class DealOfTheDayView(APIView):
     def get(self, request, *args, **kwargs):
         now = timezone.now()
+        # Optimization: select_related('category') avoids N+1 query for category relation.
         product = Product.objects.filter(
             is_deal_of_the_day=True,
             deal_expires_at__gt=now,
