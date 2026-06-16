@@ -9,6 +9,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status, generics
+import secrets
+from django.core.cache import cache
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -16,7 +19,8 @@ from django.db.models import Q, Prefetch
 from .models import Category, Product, Order, OrderItem, OTPVerification, Combo
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
-    CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer
+    CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
+    OTPRequestSerializer, OTPVerifySerializer
 )
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
@@ -385,3 +389,77 @@ class DealOfTheDayView(APIView):
             "product": serializer.data,
             "expires_at_utc": product.deal_expires_at.isoformat()
         })
+
+
+class RequestOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = OTPRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        identity = serializer.validated_data['identity']
+        user, created = User.objects.get_or_create(username=identity)
+        if '@' in identity and not user.email:
+            user.email = identity
+            user.save()
+            
+        pin = f"{secrets.SystemRandom().randint(100000, 999999)}"
+        cache_key = f"otp:{identity}"
+        cache.set(cache_key, pin, timeout=300)
+        
+        print("\n" + "="*50)
+        print(f"[OTP REQUEST LOG] Identity: {identity}")
+        print(f"[OTP REQUEST LOG] Cryptographically Secure OTP: {pin}")
+        print(f"[OTP REQUEST LOG] TTL: 300 seconds")
+        print("="*50 + "\n")
+        
+        return Response({
+            "detail": "OTP requested successfully.",
+            "identity": identity
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = OTPVerifySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        identity = serializer.validated_data['identity']
+        submitted_otp = serializer.validated_data['otp']
+        
+        cache_key = f"otp:{identity}"
+        cached_otp = cache.get(cache_key)
+        
+        if not cached_otp:
+            return Response(
+                {"detail": "OTP has expired or was not requested."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if cached_otp != submitted_otp:
+            return Response(
+                {"detail": "Incorrect OTP code."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        cache.delete(cache_key)
+        
+        try:
+            user = User.objects.get(username=identity)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        }, status=status.HTTP_200_OK)

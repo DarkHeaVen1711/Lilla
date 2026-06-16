@@ -107,3 +107,34 @@ class OrderSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
         return order
+
+
+import re
+
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
+
+class OTPRequestSerializer(serializers.Serializer):
+    identity = serializers.CharField(required=True)
+
+    def validate_identity(self, value):
+        value = value.strip()
+        if '@' in value:
+            if not EMAIL_REGEX.match(value):
+                raise serializers.ValidationError("Invalid email address format.")
+        else:
+            cleaned_phone = re.sub(r'[\s()-]', '', value)
+            if not PHONE_REGEX.match(cleaned_phone):
+                raise serializers.ValidationError("Invalid phone number format.")
+        return value
+
+
+class OTPVerifySerializer(serializers.Serializer):
+    identity = serializers.CharField(required=True)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)
+
+    def validate_otp(self, value):
+        value = value.strip()
+        if not value.isdigit():
+            raise serializers.ValidationError("OTP must contain digits only.")
+        return value

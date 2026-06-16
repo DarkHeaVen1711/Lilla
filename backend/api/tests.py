@@ -1,6 +1,9 @@
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.models import User
+from django.test import override_settings
+from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
 from api.models import Category, Product, Combo
@@ -122,3 +125,83 @@ class CatalogAPITests(APITestCase):
         self.assertEqual(data['product']['slug'], 'product-two')
         # Check expiration date is in the response and is in UTC (ISO format)
         self.assertTrue(data['expires_at_utc'].endswith('+00:00') or data['expires_at_utc'].endswith('Z'))
+
+
+@override_settings(CACHES={
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+})
+class PasswordlessAuthAPITests(APITestCase):
+
+    def setUp(self):
+        cache.clear()
+        
+    def test_request_otp_success_email(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "testuser@example.com"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['identity'], "testuser@example.com")
+        
+        self.assertTrue(User.objects.filter(username="testuser@example.com").exists())
+        
+        cached_otp = cache.get("otp:testuser@example.com")
+        self.assertIsNotNone(cached_otp)
+        self.assertEqual(len(cached_otp), 6)
+        self.assertTrue(cached_otp.isdigit())
+
+    def test_request_otp_success_phone(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "+1234567890"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        cached_otp = cache.get("otp:+1234567890")
+        self.assertIsNotNone(cached_otp)
+        self.assertEqual(len(cached_otp), 6)
+
+    def test_request_otp_invalid_identity(self):
+        url = reverse('auth-request-otp')
+        response = self.client.post(url, {"identity": "invalid-format"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+    def test_verify_otp_success(self):
+        url_req = reverse('auth-request-otp')
+        self.client.post(url_req, {"identity": "verifyuser@example.com"})
+        
+        cached_otp = cache.get("otp:verifyuser@example.com")
+        self.assertIsNotNone(cached_otp)
+        
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "verifyuser@example.com",
+            "otp": cached_otp
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        self.assertIn("access", data)
+        self.assertIn("refresh", data)
+        self.assertEqual(data["user"]["username"], "verifyuser@example.com")
+        
+        self.assertIsNone(cache.get("otp:verifyuser@example.com"))
+
+    def test_verify_otp_incorrect(self):
+        url_req = reverse('auth-request-otp')
+        self.client.post(url_req, {"identity": "wrongotp@example.com"})
+        
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "wrongotp@example.com",
+            "otp": "000000"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", response.json())
+        
+    def test_verify_otp_expired(self):
+        url_ver = reverse('auth-verify-otp')
+        response = self.client.post(url_ver, {
+            "identity": "expireduser@example.com",
+            "otp": "123456"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()["detail"], "OTP has expired or was not requested.")
