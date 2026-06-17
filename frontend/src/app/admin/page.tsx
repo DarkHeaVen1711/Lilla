@@ -465,6 +465,44 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === "users" && (
+          <div className="flex flex-col gap-6">
+            <h1 className="font-serif text-3xl text-black">Registered Users</h1>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 flex flex-col gap-6">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="pb-4 font-medium">Username</th>
+                      <th className="pb-4 font-medium">Email</th>
+                      <th className="pb-4 font-medium">Role</th>
+                      <th className="pb-4 font-medium">Joined Date</th>
+                      <th className="pb-4 font-medium text-right">Last Login</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-sm">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-50/40 transition-colors">
+                        <td className="py-4 font-semibold text-gray-900">{u.username}</td>
+                        <td className="py-4 text-gray-500">{u.email || "N/A"}</td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.is_staff ? "bg-purple-50 text-purple-700" : "bg-gray-50 text-gray-700"}`}>
+                            {u.is_staff ? "Admin" : "Customer"}
+                          </span>
+                        </td>
+                        <td className="py-4 text-gray-500">{new Date(u.date_joined).toLocaleDateString()}</td>
+                        <td className="py-4 text-right text-gray-500">
+                          {u.last_login ? new Date(u.last_login).toLocaleString() : "Never"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
