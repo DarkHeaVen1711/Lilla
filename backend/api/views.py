@@ -24,15 +24,25 @@ from .serializers import (
 from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
 
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user and request.user.is_staff
+
+
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').all()
@@ -49,6 +59,32 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(skin_concerns__icontains=concern)
 
         return queryset
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        if instance.stock > 0:
+            StockAdjustment.objects.create(
+                product=instance,
+                user=self.request.user if self.request.user.is_authenticated else None,
+                old_stock=0,
+                new_stock=instance.stock,
+                reason="API Product Creation Initial Stock"
+            )
+
+    def perform_update(self, serializer):
+        old_stock = self.get_object().stock
+        new_stock = serializer.validated_data.get('stock', old_stock)
+        
+        instance = serializer.save()
+        
+        if old_stock != new_stock:
+            StockAdjustment.objects.create(
+                product=instance,
+                user=self.request.user if self.request.user.is_authenticated else None,
+                old_stock=old_stock,
+                new_stock=new_stock,
+                reason="API Manual Edit via Admin Dashboard"
+            )
 
 
 class HomepageDataView(APIView):
