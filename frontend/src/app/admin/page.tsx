@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
-import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2 } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2, Edit } from "lucide-react";
 
 export default function AdminDashboard() {
   const user = useStore((s) => s.user);
@@ -24,6 +24,8 @@ export default function AdminDashboard() {
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png",
     is_active: true
   });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   const fetchData = async () => {
     try {
@@ -78,6 +80,33 @@ export default function AdminDashboard() {
       } else {
         const errors = await res.json();
         alert("Failed to add product: " + JSON.stringify(errors));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEditProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${apiBase}/api/products/${editingProduct.slug}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingProduct.name,
+          price: parseFloat(editingProduct.price),
+          stock: parseInt(editingProduct.stock),
+          is_active: editingProduct.is_active
+        }),
+      });
+      if (res.ok) {
+        alert("Product updated successfully!");
+        setIsEditModalOpen(false);
+        setEditingProduct(null);
+        fetchData();
+      } else {
+        alert("Failed to update product.");
       }
     } catch (err) {
       console.error(err);
@@ -215,12 +244,20 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteProduct(p.slug)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-flex"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => { setEditingProduct(p); setIsEditModalOpen(true); }}
+                              className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors inline-flex"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p.slug)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-flex"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -296,6 +333,55 @@ export default function AdminDashboard() {
                     <div className="flex gap-2 mt-2">
                       <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800">Save</button>
                       <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-250">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {isEditModalOpen && editingProduct && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100">
+                  <h3 className="font-serif text-xl text-black font-semibold">Edit Product</h3>
+                  <form onSubmit={handleEditProduct} className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      placeholder="Product Name"
+                      value={editingProduct.name}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                      required
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Price"
+                        value={editingProduct.price}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                        required
+                      />
+                      <input
+                        type="number"
+                        placeholder="Stock"
+                        value={editingProduct.stock}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                        required
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingProduct.is_active}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, is_active: e.target.checked })}
+                      />
+                      Is Active
+                    </label>
+                    <div className="flex gap-2 mt-2">
+                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800">Save</button>
+                      <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingProduct(null); }} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-250">Cancel</button>
                     </div>
                   </form>
                 </div>
