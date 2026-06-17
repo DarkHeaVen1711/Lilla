@@ -61,3 +61,76 @@ class CreatePaymentIntentView(APIView):
             
         except Exception as e:
             return Response({'error': f"Stripe payment intent creation failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+import logging
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+
+transaction_logger = logging.getLogger('lilla.transaction')
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookView(View):
+    def post(self, request, *args, **kwargs):
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+        webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '')
+
+        if not sig_header:
+            transaction_logger.error(
+                "Stripe Webhook Signature Missing",
+                extra={'context': {'status': 'missing_signature'}}
+            )
+            return HttpResponse("Missing signature", status=400)
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, webhook_secret
+            )
+        except ValueError as e:
+            transaction_logger.error(
+                "Stripe Webhook Invalid Payload",
+                extra={'context': {'status': 'invalid_payload', 'error': str(e)}}
+            )
+            return HttpResponse("Invalid payload", status=400)
+        except stripe.error.SignatureVerificationError as e:
+            transaction_logger.error(
+                "Stripe Webhook Signature Verification Failed",
+                extra={'context': {'status': 'invalid_signature', 'error': str(e)}}
+            )
+            return HttpResponse("Invalid signature", status=400)
+
+        event_type = event['type']
+        
+        if event_type == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            pi_id = payment_intent['id']
+            order_id = payment_intent.get('metadata', {}).get('order_id')
+            
+            order = None
+            if order_id:
+                try:
+                    order = Order.objects.get(id=order_id)
+                except Order.DoesNotExist:
+                    pass
+            
+            if not order:
+                order = Order.objects.filter(payment_intent_id=pi_id).first()
+
+            if order:
+                if order.status != 'Paid':
+                    order.status = 'Paid'
+                    order.save()
+                    transaction_logger.info(
+                        f"Order {order.id} marked as Paid via webhook",
+                        extra={'context': {'order_id': str(order.id), 'payment_intent_id': pi_id, 'status': 'Paid'}}
+                    )
+            else:
+                transaction_logger.warning(
+                    f"Order not found for PaymentIntent {pi_id}",
+                    extra={'context': {'payment_intent_id': pi_id}}
+                )
+
+        return HttpResponse("Success", status=200)
