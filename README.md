@@ -21,11 +21,18 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Rate-Limiting Throttles**: Custom Django Rest Framework throttle blocks restrict OTP requests to 3 attempts/min and verification to 5 attempts/min per IP/username to prevent brute force attacks.
 - **Transactional Stock Defenses**: Checkout operations employ Django's `@transaction.atomic` combined with row-level database locking (`select_for_update`) to prevent concurrent checkout race conditions.
 
-### 4. Dynamic Performance & Revalidation
+### 4. PCI-Compliant Payment Integration & Order Integrity
+- **Stripe Elements Iframe**: Renders Stripe's secure `<CardElement>` iframe, completely isolating credit card data from Zustand state and local database memory.
+- **Server-Side Price Validation**: Recomputes order totals using actual Product prices from the database before generating `PaymentIntents` to prevent price injection attacks.
+- **Asynchronous Webhook Engine**: Validates secure signatures using `stripe.Webhook.construct_event`, updating corresponding order status to `"Paid"` upon success.
+- **Transactional Stock Compensations**: On payment failure or cancellation, hooks into atomic stock locks to restore inventory (`product.stock += item.quantity`) and sets order status to `"Failed"`.
+- **Administrative Refunds**: Staff-only endpoints (`IsAdminUser`) hook directly to Stripe's refund APIs, setting order status to `"Refunded"`.
+
+### 5. Dynamic Performance & Revalidation
 - **On-Demand Cache Revalidation**: Asynchronous Django post-save/post-delete signals send tags to the Next.js revalidation endpoint (`/api/revalidate`), enabling Incremental Static Regeneration (ISR) whenever products or combo packages change.
 - **Eager Loading Database Audit**: All database list queries explicitly chain `.select_related()` and `.prefetch_related()` to eliminate nested N+1 query hits.
 
-### 5. Production Observability & Monitoring
+### 6. Production Observability & Monitoring
 - **Sentry Observability Filters**: Edge-safe Sentry telemetry integrations scrub sensitive fields (OTP keys, passwords, JWT access tokens, and `Authorization` headers) before sending telemetry frames.
 - **Structured JSON Logging**: Outputs machine-readable JSON log format via a custom Django `JSONFormatter`, categorizing security audits (`lilla.security`) and transaction events (`lilla.transaction`).
 
@@ -94,6 +101,8 @@ REVALIDATION_SECRET="default_revalidation_secret"
 TWILIO_ACCOUNT_SID=""
 TWILIO_AUTH_TOKEN=""
 TWILIO_PHONE_NUMBER=""
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
 ### Next.js Environment Variables (`frontend/.env.local`)
@@ -102,6 +111,7 @@ Create a `.env.local` file inside the `frontend` folder:
 NEXT_PUBLIC_API_URL="http://127.0.0.1:8000"
 REVALIDATION_SECRET="default_revalidation_secret"
 NEXT_PUBLIC_SENTRY_DSN=""
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 ```
 
 ---
