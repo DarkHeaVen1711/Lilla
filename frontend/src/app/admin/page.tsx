@@ -14,6 +14,16 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    id: "",
+    name: "",
+    slug: "",
+    price: "",
+    stock: "100",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png",
+    is_active: true
+  });
 
   const fetchData = async () => {
     try {
@@ -41,6 +51,33 @@ export default function AdminDashboard() {
         fetchData();
       } else {
         alert("Failed to delete product.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${apiBase}/api/products/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newProduct,
+          price: parseFloat(newProduct.price),
+          stock: parseInt(newProduct.stock)
+        }),
+      });
+      if (res.ok) {
+        alert("Product added successfully!");
+        setIsAddModalOpen(false);
+        setNewProduct({ id: "", name: "", slug: "", price: "", stock: "100", image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png", is_active: true });
+        fetchData();
+      } else {
+        const errors = await res.json();
+        alert("Failed to add product: " + JSON.stringify(errors));
       }
     } catch (err) {
       console.error(err);
@@ -125,6 +162,12 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex justify-between items-center">
               <h1 className="font-serif text-3xl text-black">Products Management</h1>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-black text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+              >
+                Add Product
+              </button>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 flex flex-col gap-6">
@@ -185,6 +228,79 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+
+            {isAddModalOpen && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100">
+                  <h3 className="font-serif text-xl text-black font-semibold">Add New Product</h3>
+                  <form onSubmit={handleAddProduct} className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      placeholder="Product ID (e.g. skin-serum)"
+                      value={newProduct.id}
+                      onChange={(e) => setNewProduct({ ...newProduct, id: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                      required
+                    />
+                    <input
+                      type="text"
+                      placeholder="Product Name"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") })}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                      required
+                    />
+                    <input
+                      type="text"
+                      placeholder="Slug"
+                      value={newProduct.slug}
+                      onChange={(e) => setNewProduct({ ...newProduct, slug: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                      required
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Price"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                        required
+                      />
+                      <input
+                        type="number"
+                        placeholder="Stock"
+                        value={newProduct.stock}
+                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                        required
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Image URL"
+                      value={newProduct.image}
+                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
+                      required
+                    />
+                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newProduct.is_active}
+                        onChange={(e) => setNewProduct({ ...newProduct, is_active: e.target.checked })}
+                      />
+                      Is Active
+                    </label>
+                    <div className="flex gap-2 mt-2">
+                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800">Save</button>
+                      <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-250">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
