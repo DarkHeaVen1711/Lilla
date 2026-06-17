@@ -56,7 +56,48 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
     readonly_fields = ('product', 'user', 'old_stock', 'new_stock', 'reason', 'created_at')
 
 
+class StockAdjustmentInline(admin.TabularInline):
+    model = StockAdjustment
+    extra = 0
+    readonly_fields = ('user', 'old_stock', 'new_stock', 'reason', 'created_at')
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'slug', 'price', 'stock', 'is_active', 'is_deal_of_the_day')
+    list_filter = ('is_active', 'is_deal_of_the_day', LowStockFilter)
+    search_fields = ('name', 'id', 'slug')
+    prepopulated_fields = {'slug': ('name',)}
+    inlines = [StockAdjustmentInline]
+
+    def save_model(self, request, obj, form, change):
+        old_stock = 0
+        if change:
+            try:
+                old_stock = Product.objects.get(pk=obj.pk).stock
+            except Product.DoesNotExist:
+                pass
+
+        is_stock_changed = not change or old_stock != obj.stock
+
+        super().save_model(request, obj, form, change)
+
+        if is_stock_changed:
+            StockAdjustment.objects.create(
+                product=obj,
+                user=request.user,
+                old_stock=old_stock if change else 0,
+                new_stock=obj.stock,
+                reason="Admin Manual Edit" if change else "Product Creation Stock Initialized"
+            )
+
+
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Combo, ComboAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(StockAdjustment, StockAdjustmentAdmin)
+admin.site.register(Product, ProductAdmin)
+
