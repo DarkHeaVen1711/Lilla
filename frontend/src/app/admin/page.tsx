@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -387,6 +388,51 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "orders" && (
+          <div className="flex flex-col gap-6">
+            <h1 className="font-serif text-3xl text-black">Customer Orders</h1>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 flex flex-col gap-6">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="pb-4 font-medium">Order ID</th>
+                      <th className="pb-4 font-medium">Customer</th>
+                      <th className="pb-4 font-medium">Date</th>
+                      <th className="pb-4 font-medium">Total</th>
+                      <th className="pb-4 font-medium">Status</th>
+                      <th className="pb-4 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-sm">
+                    {orders.map((o) => (
+                      <tr key={o.id} className="hover:bg-gray-50/40 transition-colors">
+                        <td className="py-4 font-mono text-xs text-gray-500">#{o.id.substring(0, 8)}...</td>
+                        <td className="py-4 font-semibold text-gray-900">{o.user_identifier}</td>
+                        <td className="py-4 text-gray-500">{new Date(o.created_at).toLocaleDateString()}</td>
+                        <td className="py-4 font-semibold text-gray-900">${o.total_price}</td>
+                        <td className="py-4">
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize">
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
+                            className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            {expandedOrderId === o.id ? "Hide Details" : "View Details"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </main>
