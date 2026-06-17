@@ -99,10 +99,12 @@ interface LillaStore {
     billingAddress: AddressData;
     sameAsShipping: boolean;
     paymentMethod: PaymentMethodType;
+    saveAddress: boolean;
   };
   updateBillingAddress: (data: Partial<AddressData>) => void;
   setSameAsShipping: (value: boolean) => void;
   setPaymentMethod: (method: PaymentMethodType) => void;
+  setSaveAddress: (value: boolean) => void;
   clearCheckoutForm: () => void;
 }
 
@@ -265,6 +267,7 @@ export const useStore = create<LillaStore>()(
         billingAddress: EMPTY_ADDRESS,
         sameAsShipping: true,
         paymentMethod: "CARD",
+        saveAddress: false,
       },
 
       updateBillingAddress: (data) =>
@@ -285,11 +288,17 @@ export const useStore = create<LillaStore>()(
           checkoutForm: { ...state.checkoutForm, paymentMethod: method },
         })),
 
+      setSaveAddress: (value) =>
+        set((state) => ({
+          checkoutForm: { ...state.checkoutForm, saveAddress: value },
+        })),
+
       clearCheckoutForm: () =>
         set((state) => ({
           checkoutForm: {
             ...state.checkoutForm,
             billingAddress: EMPTY_ADDRESS,
+            saveAddress: false,
           },
         })),
     }),
@@ -303,6 +312,7 @@ export const useStore = create<LillaStore>()(
           billingAddress: state.checkoutForm.billingAddress,
           sameAsShipping: state.checkoutForm.sameAsShipping,
           paymentMethod: state.checkoutForm.paymentMethod,
+          saveAddress: state.checkoutForm.saveAddress,
         },
       }),
     }
