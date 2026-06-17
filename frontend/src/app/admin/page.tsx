@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2, Edit } from "lucide-react";
@@ -409,25 +409,55 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-sm">
                     {orders.map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50/40 transition-colors">
-                        <td className="py-4 font-mono text-xs text-gray-500">#{o.id.substring(0, 8)}...</td>
-                        <td className="py-4 font-semibold text-gray-900">{o.user_identifier}</td>
-                        <td className="py-4 text-gray-500">{new Date(o.created_at).toLocaleDateString()}</td>
-                        <td className="py-4 font-semibold text-gray-900">${o.total_price}</td>
-                        <td className="py-4">
-                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize">
-                            {o.status}
-                          </span>
-                        </td>
-                        <td className="py-4 text-right">
-                          <button
-                            onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                            className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            {expandedOrderId === o.id ? "Hide Details" : "View Details"}
-                          </button>
-                        </td>
-                      </tr>
+                      <Fragment key={o.id}>
+                        <tr className="hover:bg-gray-50/40 transition-colors">
+                          <td className="py-4 font-mono text-xs text-gray-500">#{o.id.substring(0, 8)}...</td>
+                          <td className="py-4 font-semibold text-gray-900">{o.user_identifier}</td>
+                          <td className="py-4 text-gray-500">{new Date(o.created_at).toLocaleDateString()}</td>
+                          <td className="py-4 font-semibold text-gray-900">${o.total_price}</td>
+                          <td className="py-4">
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 capitalize">
+                              {o.status}
+                            </span>
+                          </td>
+                          <td className="py-4 text-right">
+                            <button
+                              onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
+                              className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              {expandedOrderId === o.id ? "Hide Details" : "View Details"}
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedOrderId === o.id && (
+                          <tr>
+                            <td colSpan={6} className="bg-gray-50/50 p-6">
+                              <div className="flex flex-col md:flex-row justify-between gap-6 text-sm text-left">
+                                <div className="space-y-1">
+                                  <h4 className="font-bold text-gray-900 mb-2">Shipping Information</h4>
+                                  <p className="text-gray-600 font-semibold">{o.shipping_name}</p>
+                                  <p className="text-gray-600">{o.shipping_address}</p>
+                                  <p className="text-gray-600">{o.shipping_city}, {o.shipping_postal_code}</p>
+                                </div>
+                                <div className="flex-1 md:max-w-md">
+                                  <h4 className="font-bold text-gray-900 mb-2">Order Items</h4>
+                                  <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
+                                    {o.items?.map((item: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between items-center p-3 text-xs">
+                                        <div>
+                                          <p className="font-bold text-gray-900">{item.product_name}</p>
+                                          <p className="text-gray-400 font-semibold">Qty: {item.quantity} × ${item.price}</p>
+                                        </div>
+                                        <p className="font-bold text-gray-900">${(item.quantity * item.price).toFixed(2)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
