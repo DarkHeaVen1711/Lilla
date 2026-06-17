@@ -49,3 +49,11 @@ class AccountPersistenceTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Address.objects.get(id=res.json()['id']).is_default)
         self.assertFalse(Address.objects.get(id=a1_id).is_default)
+
+    def test_token_refresh(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(self.u1)
+        res = self.client.post(reverse('auth-token-refresh'), {'refresh': str(refresh)})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res.json())
+

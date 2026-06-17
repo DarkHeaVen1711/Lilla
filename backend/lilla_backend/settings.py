@@ -46,10 +46,12 @@ INSTALLED_APPS = [
     'api.apps.ApiConfig',
 ]
 
+# REST Framework configuration: Locked down to JWT-only authentication for APIs.
+# SessionAuthentication is intentionally omitted to fully prevent CSRF vulnerabilities
+# in client-facing REST API endpoints, since clients use JWT headers exclusively.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
 }
 
