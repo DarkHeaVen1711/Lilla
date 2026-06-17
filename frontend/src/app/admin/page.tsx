@@ -10,9 +10,29 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "users">("overview");
 
+  const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  const fetchData = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const prodRes = await fetch(`${apiBase}/api/products/`);
+      setProducts(await prodRes.json());
+      const orderRes = await fetch(`${apiBase}/api/orders/`);
+      setOrders(await orderRes.json());
+      const userRes = await fetch(`${apiBase}/api/admin/users/`);
+      setUsers(await userRes.json());
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    }
+  };
+
   useEffect(() => {
     if (!user || !user.isStaff) {
       router.push("/");
+    } else {
+      fetchData();
     }
   }, [user, router]);
 
@@ -60,10 +80,10 @@ export default function AdminDashboard() {
             <h1 className="font-serif text-3xl text-black">Dashboard Overview</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { title: "Catalog Items", val: "Loading...", icon: <ShoppingBag /> },
-                { title: "Low Stock Items", val: "Loading...", icon: <ShoppingBag className="text-amber-500" /> },
-                { title: "Customer Orders", val: "Loading...", icon: <ShoppingCart /> },
-                { title: "Registered Users", val: "Loading...", icon: <Users /> }
+                { title: "Catalog Items", val: products.length, icon: <ShoppingBag /> },
+                { title: "Low Stock Items", val: products.filter(p => p.stock < 10).length, icon: <ShoppingBag className="text-amber-500" /> },
+                { title: "Customer Orders", val: orders.length, icon: <ShoppingCart /> },
+                { title: "Registered Users", val: users.length, icon: <Users /> }
               ].map((c, idx) => (
                 <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-5">
                   <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900">{c.icon}</div>
