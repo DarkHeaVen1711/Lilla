@@ -32,6 +32,8 @@ export function CreditCardForm() {
   const cartItems = useStore((s) => s.cart.items);
   const { subtotal, discountAmount, shippingFee, orderTotal } = useStore((s) => s.cart);
   const billingAddress = useStore((s) => s.checkoutForm.billingAddress);
+  const user = useStore((s) => s.user);
+  const saveAddress = useStore((s) => s.checkoutForm.saveAddress);
   const clearCart = useStore((s) => s.clearCart);
   const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
 
@@ -128,6 +130,29 @@ export function CreditCardForm() {
       }
 
       if (paymentIntent && paymentIntent.status === "succeeded") {
+        if (user && saveAddress) {
+          try {
+            await fetch("/api/addresses/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                first_name: billingAddress.firstName,
+                last_name: billingAddress.lastName,
+                email: billingAddress.email,
+                country: billingAddress.country,
+                address: billingAddress.address,
+                state: billingAddress.state,
+                city: billingAddress.city,
+                zip: billingAddress.zip,
+                phone: billingAddress.phone,
+                is_default: true,
+              }),
+            });
+          } catch (addrErr) {
+            console.error("Failed to save address:", addrErr);
+          }
+        }
+
         // Step 4: Clear cart and redirect to success
         const orderWithImages = {
           ...orderData,
