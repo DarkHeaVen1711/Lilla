@@ -165,7 +165,7 @@ export function AuthModal() {
       }
 
       // Write user details into store + localStorage (omitting direct token storage)
-      loginUser(finalAuthMethod);
+      loginUser(finalAuthMethod, !!data.user?.is_staff);
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
 
       // Close modal, then flush the frozen intent (e.g. complete the add-to-cart)
