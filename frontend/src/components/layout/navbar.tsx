@@ -186,6 +186,15 @@ export function Navbar({ links }: NavbarProps) {
                     );
                   })}
                   <div className="h-px bg-gray-100 w-full my-2" />
+                  {user && user.isStaff && (
+                    <>
+                      <Link href="/admin" className="flex items-center gap-4 text-lg font-medium text-black">
+                        <User className="w-5 h-5" />
+                        Admin Panel
+                      </Link>
+                      <div className="h-px bg-gray-100 w-full my-2" />
+                    </>
+                  )}
                   <Link href="/login" className="flex items-center gap-4 text-lg font-medium text-black">
                     <User className="w-5 h-5" />
                     Account
@@ -281,6 +290,18 @@ export function Navbar({ links }: NavbarProps) {
                     >
                       <p className="px-3 py-2 text-xs text-gray-500 font-medium truncate">{user.identityString}</p>
                       <div className="h-px bg-gray-100 my-1" />
+                      {user.isStaff && (
+                        <>
+                          <Link
+                            href="/admin"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-black hover:bg-gray-50 rounded-lg transition-colors"
+                          >
+                            <User className="w-4 h-4" /> Admin Panel
+                          </Link>
+                          <div className="h-px bg-gray-100 my-1" />
+                        </>
+                      )}
                       <button
                         onClick={async () => {
                           logoutUser();
