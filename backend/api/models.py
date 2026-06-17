@@ -90,13 +90,13 @@ from django.contrib.auth.models import User
 class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
-    user_identifier = models.CharField(max_length=255)  # email or phone number
+    user_identifier = models.CharField(max_length=255, db_index=True)  # email or phone number
     shipping_name = models.CharField(max_length=255)
     shipping_address = models.TextField()
     shipping_city = models.CharField(max_length=255)
     shipping_postal_code = models.CharField(max_length=50)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50, default="Pending")  # Pending, Paid, Failed
+    status = models.CharField(max_length=50, default="Pending", db_index=True)  # Pending, Paid, Failed
     payment_intent_id = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
