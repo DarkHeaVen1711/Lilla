@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
-import { LayoutDashboard, ShoppingBag, ShoppingCart, Users } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const user = useStore((s) => s.user);
@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchData = async () => {
     try {
@@ -25,6 +26,24 @@ export default function AdminDashboard() {
       setUsers(await userRes.json());
     } catch (err) {
       console.error("Error fetching data:", err);
+    }
+  };
+
+  const handleDeleteProduct = async (slug: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${apiBase}/api/products/${slug}/`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        alert("Product deleted successfully!");
+        fetchData();
+      } else {
+        alert("Failed to delete product.");
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -43,6 +62,11 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col lg:flex-row font-sans">
@@ -93,6 +117,73 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "products" && (
+          <div className="flex flex-col gap-6">
+            <div className="flex justify-between items-center">
+              <h1 className="font-serif text-3xl text-black">Products Management</h1>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 flex flex-col gap-6">
+              <div className="relative max-w-md w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black transition-colors"
+                />
+              </div>
+
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="pb-4 font-medium">Product</th>
+                      <th className="pb-4 font-medium">Price</th>
+                      <th className="pb-4 font-medium">Stock</th>
+                      <th className="pb-4 font-medium">Status</th>
+                      <th className="pb-4 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-sm">
+                    {filteredProducts.map((p) => (
+                      <tr key={p.id} className="group hover:bg-gray-50/40 transition-colors">
+                        <td className="py-4 flex items-center gap-3">
+                          <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-contain bg-gray-50 p-1 shrink-0" />
+                          <div>
+                            <p className="font-bold text-gray-900">{p.name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{p.id}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 font-semibold text-gray-900">${p.price}</td>
+                        <td className="py-4">
+                          <span className={`font-semibold ${p.stock < 10 ? "text-amber-600 font-bold" : "text-gray-900"}`}>
+                            {p.stock}
+                          </span>
+                        </td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                            {p.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteProduct(p.slug)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-flex"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
