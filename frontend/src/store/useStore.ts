@@ -55,14 +55,6 @@ export interface AddressData {
   phone: string;
 }
 
-export interface CardData {
-  nameOnCard: string;
-  cardNumber: string;
-  expiryMonth: string;
-  expiryYear: string;
-  cvv: string;
-}
-
 // ─── Store Shape ─────────────────────────────────────────────────────────────
 
 interface LillaStore {
@@ -106,12 +98,10 @@ interface LillaStore {
     billingAddress: AddressData;
     sameAsShipping: boolean;
     paymentMethod: PaymentMethodType;
-    cardDetails: CardData | null;
   };
   updateBillingAddress: (data: Partial<AddressData>) => void;
   setSameAsShipping: (value: boolean) => void;
   setPaymentMethod: (method: PaymentMethodType) => void;
-  updateCardDetails: (data: Partial<CardData>) => void;
   clearCheckoutForm: () => void;
 }
 
@@ -273,7 +263,6 @@ export const useStore = create<LillaStore>()(
         billingAddress: EMPTY_ADDRESS,
         sameAsShipping: true,
         paymentMethod: "CARD",
-        cardDetails: null,
       },
 
       updateBillingAddress: (data) =>
@@ -294,28 +283,11 @@ export const useStore = create<LillaStore>()(
           checkoutForm: { ...state.checkoutForm, paymentMethod: method },
         })),
 
-      updateCardDetails: (data) =>
-        set((state) => ({
-          checkoutForm: {
-            ...state.checkoutForm,
-            cardDetails: {
-              nameOnCard: "",
-              cardNumber: "",
-              expiryMonth: "",
-              expiryYear: "",
-              cvv: "",
-              ...state.checkoutForm.cardDetails,
-              ...data,
-            },
-          },
-        })),
-
       clearCheckoutForm: () =>
         set((state) => ({
           checkoutForm: {
             ...state.checkoutForm,
             billingAddress: EMPTY_ADDRESS,
-            cardDetails: null,
           },
         })),
     }),
@@ -329,7 +301,6 @@ export const useStore = create<LillaStore>()(
           billingAddress: state.checkoutForm.billingAddress,
           sameAsShipping: state.checkoutForm.sameAsShipping,
           paymentMethod: state.checkoutForm.paymentMethod,
-          cardDetails: null, // never persist card details
         },
       }),
     }

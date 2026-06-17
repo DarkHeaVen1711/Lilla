@@ -334,12 +334,10 @@ class OrderCreateView(generics.ListCreateAPIView):
         return Order.objects.none()
 
     def perform_create(self, serializer):
-        time.sleep(0.5)
-        
         if self.request.user.is_authenticated:
-            serializer.save(status="Paid", user=self.request.user)
+            serializer.save(status="Pending", user=self.request.user)
         else:
-            serializer.save(status="Paid")
+            serializer.save(status="Pending")
 
 
 class OrderDetailView(generics.RetrieveAPIView):
@@ -479,3 +477,52 @@ class VerifyOTPView(APIView):
                 "email": user.email
             }
         }, status=status.HTTP_200_OK)
+
+
+import stripe
+from rest_framework.permissions import IsAdminUser
+
+stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', os.getenv('STRIPE_SECRET_KEY', 'sk_test_PlaceholderSecretKey'))
+transaction_logger = logging.getLogger('lilla.transaction')
+
+class OrderRefundView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, id, *args, **kwargs):
+        order = get_object_or_404(Order, id=id)
+        if not order.payment_intent_id:
+            return Response(
+                {"error": "No payment intent ID associated with this order. Cannot perform refund."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if order.status == "Refunded":
+            return Response(
+                {"error": "Order has already been refunded."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            refund = stripe.Refund.create(
+                payment_intent=order.payment_intent_id
+            )
+            order.status = "Refunded"
+            order.save()
+            
+            transaction_logger.info(
+                f"Order {order.id} refunded successfully via Stripe",
+                extra={'context': {'order_id': str(order.id), 'payment_intent_id': order.payment_intent_id, 'refund_id': refund.id, 'status': 'Refunded'}}
+            )
+            return Response(
+                {"status": "success", "message": "Order refunded successfully.", "refund_id": refund.id},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            transaction_logger.error(
+                f"Failed to refund order {order.id}: {str(e)}",
+                extra={'context': {'order_id': str(order.id), 'payment_intent_id': order.payment_intent_id, 'error': str(e)}}
+            )
+            return Response(
+                {"error": f"Stripe refund failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )

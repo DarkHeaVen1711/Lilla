@@ -139,3 +139,161 @@ class CriticalPathIntegrationTests(APITestCase):
         # Check database stock remains unchanged at 3
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 3)
+
+
+from unittest.mock import patch, MagicMock
+
+class StripePaymentsTests(APITestCase):
+    def setUp(self):
+        # Set up a category and product for stock/checkout testing
+        self.category = Category.objects.create(name="Premium Skincare", slug="skincare")
+        self.product = Product.objects.create(
+            id="lilla-glow-oil",
+            slug="lilla-glow-oil",
+            name="Glow Oil",
+            price=25.00,
+            category=self.category,
+            stock=5,
+            is_active=True
+        )
+        self.admin_user = User.objects.create_superuser(username="admin@lilla.com", password="password")
+        self.normal_user = User.objects.create_user(username="user@lilla.com", password="password")
+        
+        # Create a pending order
+        self.order = Order.objects.create(
+            user_identifier="user@lilla.com",
+            shipping_name="John Doe",
+            shipping_address="123 Lilla Lane",
+            shipping_city="Los Angeles",
+            shipping_postal_code="90001",
+            total_price=55.00,
+            status="Pending"
+        )
+        self.order_item = OrderItem.objects.create(
+            order=self.order,
+            product_id="lilla-glow-oil",
+            product_name="Glow Oil",
+            price=25.00,
+            quantity=2
+        )
+
+    @patch('stripe.PaymentIntent.create')
+    def test_create_payment_intent(self, mock_create):
+        mock_intent = MagicMock()
+        mock_intent.id = "pi_mock_123"
+        mock_intent.client_secret = "seti_mock_secret_123"
+        mock_create.return_value = mock_intent
+
+        url = reverse('payments-create-intent')
+        response = self.client.post(url, {"order_id": str(self.order.id)}, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["client_secret"], "seti_mock_secret_123")
+        self.assertEqual(response.data["payment_intent_id"], "pi_mock_123")
+        
+        # Verify order updated
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_intent_id, "pi_mock_123")
+
+    def test_create_payment_intent_invalid_order(self):
+        url = reverse('payments-create-intent')
+        response = self.client.post(url, {"order_id": "00000000-0000-0000-0000-000000000000"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_payment_intent_succeeded(self, mock_construct_event):
+        mock_event = {
+            "type": "payment_intent.succeeded",
+            "data": {
+                "object": {
+                    "id": "pi_mock_123",
+                    "metadata": {
+                        "order_id": str(self.order.id)
+                    }
+                }
+            }
+        }
+        mock_construct_event.return_value = mock_event
+        
+        self.order.payment_intent_id = "pi_mock_123"
+        self.order.save()
+
+        url = reverse('payments-webhook')
+        self.client.credentials(HTTP_STRIPE_SIGNATURE="mock_signature")
+        response = self.client.post(url, data="{}", content_type="application/json")
+        
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "Paid")
+
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_payment_intent_failed_restores_stock(self, mock_construct_event):
+        mock_event = {
+            "type": "payment_intent.payment_failed",
+            "data": {
+                "object": {
+                    "id": "pi_mock_123",
+                    "metadata": {
+                        "order_id": str(self.order.id)
+                    }
+                }
+            }
+        }
+        mock_construct_event.return_value = mock_event
+        
+        self.order.payment_intent_id = "pi_mock_123"
+        self.order.status = "Pending"
+        self.order.save()
+        
+        self.product.stock = 3
+        self.product.save()
+
+        url = reverse('payments-webhook')
+        self.client.credentials(HTTP_STRIPE_SIGNATURE="mock_signature")
+        response = self.client.post(url, data="{}", content_type="application/json")
+        
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "Failed")
+        
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
+    @patch('stripe.Refund.create')
+    def test_order_refund_success_admin(self, mock_refund_create):
+        mock_refund = MagicMock()
+        mock_refund.id = "re_mock_123"
+        mock_refund_create.return_value = mock_refund
+        
+        self.order.payment_intent_id = "pi_mock_123"
+        self.order.status = "Paid"
+        self.order.save()
+        
+        self.client.force_authenticate(user=self.admin_user)
+        
+        url = reverse('order-refund', kwargs={"id": self.order.id})
+        response = self.client.post(url, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "Refunded")
+        mock_refund_create.assert_called_once_with(payment_intent="pi_mock_123")
+
+    def test_order_refund_forbidden_normal_user(self):
+        self.client.force_authenticate(user=self.normal_user)
+        
+        url = reverse('order-refund', kwargs={"id": self.order.id})
+        response = self.client.post(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_order_refund_no_payment_intent(self):
+        self.order.payment_intent_id = ""
+        self.order.status = "Paid"
+        self.order.save()
+        
+        self.client.force_authenticate(user=self.admin_user)
+        
+        url = reverse('order-refund', kwargs={"id": self.order.id})
+        response = self.client.post(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("No payment intent ID associated", response.data["error"])

@@ -263,3 +263,11 @@ try:
 except ImportError:
     print("[TELEMETRY] Sentry-sdk not found, skipping initialization.")
 
+# ==============================================================================
+# Stripe Gateway Configurations
+# ==============================================================================
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', 'sk_test_PlaceholderSecretKey')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', 'pk_test_PlaceholderPublishableKey')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'whsec_PlaceholderWebhookKey')
+
+
