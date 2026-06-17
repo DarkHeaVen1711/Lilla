@@ -1,6 +1,9 @@
+import logging
 from django.db import transaction
 from rest_framework import serializers
 from .models import Category, Product, Order, OrderItem, Combo
+
+transaction_logger = logging.getLogger('lilla.transaction')
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -112,9 +115,24 @@ class OrderSerializer(serializers.ModelSerializer):
             quantity = item_data.get('quantity')
             
             # Row-level locking to prevent checkout race conditions
-            product = Product.objects.select_for_update().get(id=product_id)
+            try:
+                product = Product.objects.select_for_update().get(id=product_id)
+                transaction_logger.info(
+                    f"Database row-lock acquired for product: {product_id}",
+                    extra={'context': {'product_id': product_id, 'status': 'acquired', 'requested_qty': quantity, 'available_stock': product.stock}}
+                )
+            except Product.DoesNotExist:
+                transaction_logger.error(
+                    f"Database row-lock failed: Product {product_id} does not exist",
+                    extra={'context': {'product_id': product_id, 'status': 'failed_not_found', 'requested_qty': quantity}}
+                )
+                raise
             
             if product.stock < quantity:
+                transaction_logger.warning(
+                    f"Insufficient stock for product {product.name}",
+                    extra={'context': {'product_id': product_id, 'status': 'insufficient_stock', 'available_stock': product.stock, 'requested_qty': quantity}}
+                )
                 raise serializers.ValidationError(
                     f"Insufficient stock for product '{product.name}'. Available: {product.stock}, Requested: {quantity}."
                 )
@@ -127,6 +145,10 @@ class OrderSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
             
+        transaction_logger.info(
+            f"Checkout transaction completed successfully for order {order.id}",
+            extra={'context': {'order_id': str(order.id), 'user_identifier': order.user_identifier, 'total_price': str(order.total_price)}}
+        )
         return order
 
 
