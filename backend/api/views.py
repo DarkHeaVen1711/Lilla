@@ -2,6 +2,9 @@ import time
 import os
 import re
 import random
+import logging
+
+security_logger = logging.getLogger('lilla.security')
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -22,6 +25,7 @@ from .serializers import (
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
     OTPRequestSerializer, OTPVerifySerializer
 )
+from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
 PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
@@ -322,11 +326,11 @@ class OrderCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Order.objects.prefetch_related('items').filter(user=self.request.user)
+            return Order.objects.select_related('user').prefetch_related('items').filter(user=self.request.user)
         
         user_id = self.request.query_params.get('user_identifier')
         if user_id:
-            return Order.objects.prefetch_related('items').filter(user_identifier=user_id)
+            return Order.objects.select_related('user').prefetch_related('items').filter(user_identifier=user_id)
         return Order.objects.none()
 
     def perform_create(self, serializer):
@@ -339,7 +343,7 @@ class OrderCreateView(generics.ListCreateAPIView):
 
 
 class OrderDetailView(generics.RetrieveAPIView):
-    queryset = Order.objects.prefetch_related('items').all()
+    queryset = Order.objects.select_related('user').prefetch_related('items').all()
     serializer_class = OrderSerializer
     lookup_field = 'id'
 
@@ -392,6 +396,8 @@ class DealOfTheDayView(APIView):
 
 
 class RequestOTPView(APIView):
+    throttle_classes = [RequestOTPThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = OTPRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -420,6 +426,8 @@ class RequestOTPView(APIView):
 
 
 class VerifyOTPView(APIView):
+    throttle_classes = [VerifyOTPThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = OTPVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -432,12 +440,20 @@ class VerifyOTPView(APIView):
         cached_otp = cache.get(cache_key)
         
         if not cached_otp:
+            security_logger.warning(
+                "OTP verification failed: Expired or not requested",
+                extra={'context': {'identity': identity, 'reason': 'expired_or_not_found', 'event': 'otp_expired'}}
+            )
             return Response(
                 {"detail": "OTP has expired or was not requested."},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
         if cached_otp != submitted_otp:
+            security_logger.warning(
+                "OTP verification failed: Incorrect code submitted",
+                extra={'context': {'identity': identity, 'reason': 'incorrect_otp', 'event': 'otp_incorrect'}}
+            )
             return Response(
                 {"detail": "Incorrect OTP code."},
                 status=status.HTTP_400_BAD_REQUEST

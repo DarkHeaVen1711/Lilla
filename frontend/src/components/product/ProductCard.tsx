@@ -24,9 +24,10 @@ const FALLBACK_PRODUCT: CommerceProduct = {
 
 type ProductCardProps = {
   product?: CommerceProduct;
+  priority?: boolean;
 };
 
-export function ProductCard({ product = FALLBACK_PRODUCT }: ProductCardProps) {
+export function ProductCard({ product = FALLBACK_PRODUCT, priority = false }: ProductCardProps) {
   const { toggleFavorite, isFavorite } = useCommerce();
   const addToCart = useStore((s) => s.addToCart);
   const withAuthGate = useAuthGate();
@@ -69,6 +70,10 @@ export function ProductCard({ product = FALLBACK_PRODUCT }: ProductCardProps) {
           src={product.image}
           alt={product.name}
           fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
+          priority={priority}
+          placeholder="blur"
+          blurDataURL="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNmM2Y0ZjYiLz48L3N2Zz4="
           className="object-contain transition-transform duration-500 group-hover:scale-105"
         />
         
