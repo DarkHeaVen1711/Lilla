@@ -6,7 +6,7 @@ import {
   mapDjangoProductToFrontend,
   mapDjangoComboToFrontendProduct,
   fetchWithTimeout,
-} from "./woocommerce";
+} from "./productAdapter";
 
 
 

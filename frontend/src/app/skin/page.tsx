@@ -1,5 +1,5 @@
 import { CategoryLayoutClient } from "@/components/shop/CategoryLayoutClient";
-import { getProducts } from "@/lib/woocommerce";
+import { getProducts } from "@/lib/productAdapter";
 
 export default async function SkincarePage() {
   const products = await getProducts();

@@ -1,5 +1,5 @@
 import { CatalogCard } from "@/components/shop/CatalogCard";
-import { getProducts } from "@/lib/woocommerce";
+import { getProducts } from "@/lib/productAdapter";
 
 export default async function ShopCollectionPage({
   params,

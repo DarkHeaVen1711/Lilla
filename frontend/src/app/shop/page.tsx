@@ -1,5 +1,5 @@
 import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
-import { getProducts } from "@/lib/woocommerce";
+import { getProducts } from "@/lib/productAdapter";
 
 export default async function ShopPage() {
   const products = await getProducts();

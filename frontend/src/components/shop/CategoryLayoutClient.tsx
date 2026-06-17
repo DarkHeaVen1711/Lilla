@@ -6,7 +6,7 @@ import { Search, ChevronDown, ChevronUp, Heart, Star } from "lucide-react";
 import Image from "next/image";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
 import { useCommerce } from "@/components/providers/CommerceProvider";
-import type { FrontendProduct } from "@/lib/woocommerce";
+import type { FrontendProduct } from "@/lib/productAdapter";
 
 type CategoryLayoutClientProps = {
   products: FrontendProduct[];
