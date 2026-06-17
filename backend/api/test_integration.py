@@ -2,9 +2,16 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.test import override_settings
 from django.contrib.auth.models import User
 from api.models import Category, Product, Order, OrderItem
 
+@override_settings(CACHES={
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'integration-test-cache',
+    }
+})
 class CriticalPathIntegrationTests(APITestCase):
 
     def setUp(self):
