@@ -1,7 +1,7 @@
 import logging
 from django.db import transaction
 from rest_framework import serializers
-from .models import Category, Product, Order, OrderItem, Combo
+from .models import Category, Product, Order, OrderItem, Combo, Favorite, Address
 
 transaction_logger = logging.getLogger('lilla.transaction')
 
@@ -181,3 +181,29 @@ class OTPVerifySerializer(serializers.Serializer):
         if not value.isdigit():
             raise serializers.ValidationError("OTP must contain digits only.")
         return value
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source='product', write_only=True
+    )
+
+    class Meta:
+        model = Favorite
+        fields = ['id', 'product', 'product_id', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        product = attrs.get('product')
+        if Favorite.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("This product is already in your favorites.")
+        return attrs
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['id', 'first_name', 'last_name', 'email', 'country', 'address', 'state', 'city', 'zip', 'phone', 'is_default', 'created_at']
+        read_only_fields = ['id', 'created_at']

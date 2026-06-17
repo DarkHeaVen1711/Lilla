@@ -3,12 +3,14 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView
+    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView, FavoriteViewSet, AddressViewSet
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet, basename='product')
+router.register(r'favorites', FavoriteViewSet, basename='favorite')
+router.register(r'addresses', AddressViewSet, basename='address')
 
 urlpatterns = [
     path('', include(router.urls)),
