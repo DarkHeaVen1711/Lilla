@@ -18,7 +18,7 @@ Sentry.init({
       try {
         let parsed = typeof event.request.data === "string" ? JSON.parse(event.request.data) : event.request.data;
         if (parsed && typeof parsed === "object") {
-          for (const key of ["otp", "password", "token", "access", "refresh"]) {
+          for (const key of ["otp", "password", "token", "access", "refresh", "client_secret", "payment_intent_id", "paymentMethodId", "stripe_token", "card"]) {
             if (key in parsed) {
               parsed[key] = "[SCRUBBED]";
             }
