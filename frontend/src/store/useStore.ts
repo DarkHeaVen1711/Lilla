@@ -30,6 +30,7 @@ export interface UserState {
   token: string;
   identityString: string;
   isGuest: boolean;
+  isStaff: boolean;
   metadata: ProfileFields;
 }
 
@@ -60,7 +61,7 @@ export interface AddressData {
 interface LillaStore {
   // User Session
   user: UserState | null;
-  loginUser: (identityString: string) => void;
+  loginUser: (identityString: string, isStaff: boolean) => void;
   logoutUser: () => void;
 
   // Auth Modal State Machine
@@ -142,12 +143,13 @@ export const useStore = create<LillaStore>()(
       // ── User ──────────────────────────────────────────────────────────────
       user: null,
 
-      loginUser: (identityString) => {
+      loginUser: (identityString, isStaff) => {
         set({
           user: {
             token: "",
             identityString,
             isGuest: false,
+            isStaff: !!isStaff,
             metadata: {},
           },
         });
