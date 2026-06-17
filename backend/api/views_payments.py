@@ -132,5 +132,50 @@ class StripeWebhookView(View):
                     f"Order not found for PaymentIntent {pi_id}",
                     extra={'context': {'payment_intent_id': pi_id}}
                 )
+        elif event_type in ['payment_intent.payment_failed', 'payment_intent.canceled']:
+            payment_intent = event['data']['object']
+            pi_id = payment_intent['id']
+            order_id = payment_intent.get('metadata', {}).get('order_id')
+            
+            order = None
+            if order_id:
+                try:
+                    order = Order.objects.get(id=order_id)
+                except Order.DoesNotExist:
+                    pass
+            
+            if not order:
+                order = Order.objects.filter(payment_intent_id=pi_id).first()
+
+            if order:
+                if order.status not in ['Paid', 'Failed']:
+                    from django.db import transaction
+                    with transaction.atomic():
+                        for item in order.items.all():
+                            try:
+                                product = Product.objects.select_for_update().get(id=item.product_id)
+                                product.stock += item.quantity
+                                product.save()
+                                transaction_logger.info(
+                                    f"Restored stock for product {product.id} by {item.quantity}",
+                                    extra={'context': {'order_id': str(order.id), 'product_id': product.id, 'restored_qty': item.quantity, 'new_stock': product.stock}}
+                                )
+                            except Product.DoesNotExist:
+                                transaction_logger.error(
+                                    f"Product {item.product_id} not found during stock restoration for order {order.id}",
+                                    extra={'context': {'order_id': str(order.id), 'product_id': item.product_id}}
+                                )
+                        
+                        order.status = 'Failed'
+                        order.save()
+                        transaction_logger.warning(
+                            f"Order {order.id} marked as Failed due to payment failure/cancellation",
+                            extra={'context': {'order_id': str(order.id), 'payment_intent_id': pi_id, 'status': 'Failed'}}
+                        )
+            else:
+                transaction_logger.warning(
+                    f"Order not found for failed/canceled PaymentIntent {pi_id}",
+                    extra={'context': {'payment_intent_id': pi_id}}
+                )
 
         return HttpResponse("Success", status=200)
