@@ -334,12 +334,10 @@ class OrderCreateView(generics.ListCreateAPIView):
         return Order.objects.none()
 
     def perform_create(self, serializer):
-        time.sleep(0.5)
-        
         if self.request.user.is_authenticated:
-            serializer.save(status="Paid", user=self.request.user)
+            serializer.save(status="Pending", user=self.request.user)
         else:
-            serializer.save(status="Paid")
+            serializer.save(status="Pending")
 
 
 class OrderDetailView(generics.RetrieveAPIView):
