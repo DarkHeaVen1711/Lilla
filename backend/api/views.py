@@ -15,11 +15,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment
+from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
-    OTPRequestSerializer, OTPVerifySerializer
+    OTPRequestSerializer, OTPVerifySerializer, FavoriteSerializer, AddressSerializer
 )
 from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
@@ -435,4 +435,42 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = AdminUserSerializer
+
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FavoriteSerializer
+    lookup_field = 'product_id'
+
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['delete'])
+    def clear(self, request):
+        Favorite.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AddressViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddressSerializer
+
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user).order_by('-is_default', '-created_at')
+
+    def perform_create(self, serializer):
+        if serializer.validated_data.get('is_default', False):
+            Address.objects.filter(user=self.request.user).update(is_default=False)
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        if serializer.validated_data.get('is_default', False):
+            Address.objects.filter(user=self.request.user).update(is_default=False)
+        serializer.save()
 

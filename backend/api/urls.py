@@ -3,19 +3,23 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView
+    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView, FavoriteViewSet, AddressViewSet
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
-
+from rest_framework_simplejwt.views import TokenRefreshView
+ 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet, basename='product')
-
+router.register(r'favorites', FavoriteViewSet, basename='favorite')
+router.register(r'addresses', AddressViewSet, basename='address')
+ 
 urlpatterns = [
     path('', include(router.urls)),
     path('categories/', CategoryListView.as_view(), name='category-list'),
     path('homepage/', HomepageDataView.as_view(), name='homepage-data'),
     path('auth/request-otp/', RequestOTPView.as_view(), name='auth-request-otp'),
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('payments/create-intent/', CreatePaymentIntentView.as_view(), name='payments-create-intent'),
     path('payments/webhook/', StripeWebhookView.as_view(), name='payments-webhook'),

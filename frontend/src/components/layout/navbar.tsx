@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Search, User, X, Menu, LogOut, LogIn } from "lucide-react";
+import { Heart, Search, User, X, Menu, LogOut, LogIn, ShoppingBag } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { m as motion, AnimatePresence } from "framer-motion";
 
@@ -195,10 +195,17 @@ export function Navbar({ links }: NavbarProps) {
                       <div className="h-px bg-gray-100 w-full my-2" />
                     </>
                   )}
-                  <Link href="/login" className="flex items-center gap-4 text-lg font-medium text-black">
-                    <User className="w-5 h-5" />
-                    Account
-                  </Link>
+                  {user ? (
+                    <Link href="/account/orders" className="flex items-center gap-4 text-lg font-medium text-black">
+                      <ShoppingBag className="w-5 h-5" />
+                      My Orders
+                    </Link>
+                  ) : (
+                    <Link href="/login" className="flex items-center gap-4 text-lg font-medium text-black">
+                      <User className="w-5 h-5" />
+                      Account
+                    </Link>
+                  )}
                   <Link href="/favorites" className="flex items-center gap-4 text-lg font-medium text-black">
                     <div className="relative">
                       <Heart className="w-5 h-5" />
@@ -302,6 +309,14 @@ export function Navbar({ links }: NavbarProps) {
                           <div className="h-px bg-gray-100 my-1" />
                         </>
                       )}
+                      <Link
+                        href="/account/orders"
+                        onClick={() => setShowUserMenu(false)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-black hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <ShoppingBag className="w-4 h-4" /> My Orders
+                      </Link>
+                      <div className="h-px bg-gray-100 my-1" />
                       <button
                         onClick={async () => {
                           logoutUser();
