@@ -34,3 +34,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function GET(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("access_token")?.value;
+
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
+    const { searchParams } = new URL(req.url);
+    const userIdentifier = searchParams.get("user_identifier");
+    
+    let url = `${API_BASE_URL}/api/orders/`;
+    if (userIdentifier) {
+      url += `?user_identifier=${encodeURIComponent(userIdentifier)}`;
+    }
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
