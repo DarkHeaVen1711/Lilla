@@ -74,3 +74,51 @@ class AdminPermissionsTestCase(APITestCase):
         # With identifier query parameter
         response = self.client.get(f"{url}?user_identifier=customer@example.com")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_product_modification_permissions(self):
+        url = reverse('product-detail', kwargs={'slug': self.product.slug})
+        
+        # Normal user cannot patch product
+        self.client.force_authenticate(user=self.normal_user)
+        response = self.client.patch(url, {"stock": 45}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Admin user can patch product
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(url, {"stock": 45}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verify stock was modified and adjustment logged
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 45)
+        
+        adjustments = StockAdjustment.objects.filter(product=self.product)
+        self.assertEqual(adjustments.count(), 1)
+        self.assertEqual(adjustments.first().old_stock, 50)
+        self.assertEqual(adjustments.first().new_stock, 45)
+        self.assertEqual(adjustments.first().user, self.admin_user)
+
+    def test_django_admin_save_model_logs_adjustment(self):
+        # Instantiate admin model class and check stock adjustment logging on save_model
+        site = AdminSite()
+        product_admin = ProductAdmin(Product, site)
+        
+        # Change stock
+        self.product.stock = 60
+        # Mock request with user
+        class MockRequest:
+            user = self.admin_user
+            
+        request = MockRequest()
+        
+        # Save model
+        product_admin.save_model(request, self.product, form=None, change=True)
+        
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 60)
+        
+        adjustments = StockAdjustment.objects.filter(product=self.product, reason="Admin Manual Edit")
+        self.assertEqual(adjustments.count(), 1)
+        self.assertEqual(adjustments.first().old_stock, 50)
+        self.assertEqual(adjustments.first().new_stock, 60)
+        self.assertEqual(adjustments.first().user, self.admin_user)
