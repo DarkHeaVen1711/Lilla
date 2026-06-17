@@ -1,7 +1,7 @@
 import dynamic from "next/dynamic";
 import { HeroSwitcher } from "@/components/home/HeroSwitcher";
 import { getHomePageData } from "@/lib/homepageData";
-import { getProducts } from "@/lib/woocommerce";
+import { getProducts } from "@/lib/productAdapter";
 
 const ShopByCategorySection = dynamic(() =>
   import("@/components/home/ShopByCategorySection").then((mod) => mod.ShopByCategorySection),

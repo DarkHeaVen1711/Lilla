@@ -6,21 +6,39 @@ import Image from "next/image";
 import { OrderConfirmationCard } from "@/components/checkout/OrderConfirmationCard";
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
-import { MOCK_WOOCOMMERCE_PRODUCTS, mapWooCommerceProductToFrontend } from "@/lib/woocommerce";
+import { getHomePageData } from "@/lib/homepageData";
 
 export default function OrderConfirmationPage() {
   const { cartItems } = useCommerce();
   const [order, setOrder] = useState<any>(null);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
 
   useEffect(() => {
     const lastOrder = localStorage.getItem("lilla-last-order");
+    let orderedProductIds: string[] = [];
     if (lastOrder) {
       try {
-        setOrder(JSON.parse(lastOrder));
+        const parsed = JSON.parse(lastOrder);
+        setOrder(parsed);
+        if (parsed && parsed.items) {
+          orderedProductIds = parsed.items.map((item: any) => item.product_id);
+        }
       } catch (e) {
         // ignore
       }
     }
+
+    getHomePageData().then((data) => {
+      if (data && data.bestSellers) {
+        let recommended = data.bestSellers;
+        if (orderedProductIds.length > 0) {
+          recommended = recommended.filter((p) => !orderedProductIds.includes(p.id));
+        }
+        setRecommendedProducts(recommended);
+      }
+    }).catch((err) => {
+      console.error("Failed to load recommended products:", err);
+    });
   }, []);
   
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -29,7 +47,6 @@ export default function OrderConfirmationPage() {
   const cartTotal = subtotal > 0 ? (subtotal - discount + deliveryFee).toFixed(2) : "0.00";
 
   const total = order ? order.total_price : cartTotal;
-  const recommendedProducts = MOCK_WOOCOMMERCE_PRODUCTS.slice(0, 8).map(mapWooCommerceProductToFrontend);
 
   return (
     <div className="w-full min-h-screen bg-brand-bg-cream flex flex-col items-center pb-20 pt-16">
