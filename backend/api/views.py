@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Category, Product, Order, OrderItem, Combo
+from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
@@ -24,15 +24,25 @@ from .serializers import (
 from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
 
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user and request.user.is_staff
+
+
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').all()
@@ -49,6 +59,32 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(skin_concerns__icontains=concern)
 
         return queryset
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        if instance.stock > 0:
+            StockAdjustment.objects.create(
+                product=instance,
+                user=self.request.user if self.request.user.is_authenticated else None,
+                old_stock=0,
+                new_stock=instance.stock,
+                reason="API Product Creation Initial Stock"
+            )
+
+    def perform_update(self, serializer):
+        old_stock = self.get_object().stock
+        new_stock = serializer.validated_data.get('stock', old_stock)
+        
+        instance = serializer.save()
+        
+        if old_stock != new_stock:
+            StockAdjustment.objects.create(
+                product=instance,
+                user=self.request.user if self.request.user.is_authenticated else None,
+                old_stock=old_stock,
+                new_stock=new_stock,
+                reason="API Manual Edit via Admin Dashboard"
+            )
 
 
 class HomepageDataView(APIView):
@@ -182,6 +218,8 @@ class OrderCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
+            if self.request.user.is_staff:
+                return Order.objects.select_related('user').prefetch_related('items').all()
             return Order.objects.select_related('user').prefetch_related('items').filter(user=self.request.user)
         
         user_id = self.request.query_params.get('user_identifier')
@@ -330,7 +368,8 @@ class VerifyOTPView(APIView):
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email
+                "email": user.email,
+                "is_staff": user.is_staff
             }
         }, status=status.HTTP_200_OK)
 
@@ -382,3 +421,18 @@ class OrderRefundView(APIView):
                 {"error": f"Stripe refund failed: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+from rest_framework import serializers
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'is_staff', 'last_login', 'date_joined')
+
+
+class AdminUserListView(generics.ListAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = AdminUserSerializer
+

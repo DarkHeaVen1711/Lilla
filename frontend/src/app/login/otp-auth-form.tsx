@@ -5,8 +5,10 @@ import Image from "next/image";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { Loader2, Edit3 } from "lucide-react";
 import logo from "@/images/logo.png";
+import { useStore } from "@/store/useStore";
 
 export function OtpAuthForm() {
+  const loginUser = useStore((s) => s.loginUser);
   const [step, setStep] = useState<"input" | "otp">("input");
   const [authMethod, setAuthMethod] = useState<string>("");
   const [countryCode, setCountryCode] = useState("+1");
@@ -89,6 +91,7 @@ export function OtpAuthForm() {
       }
 
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
+      loginUser(finalAuth, !!data.user?.is_staff);
       window.location.href = "/";
     } catch (err: any) {
       console.error("Auth verify OTP error:", err);

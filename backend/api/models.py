@@ -113,3 +113,16 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product_name} in Order {self.order.id}"
+
+
+class StockAdjustment(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_adjustments")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    old_stock = models.IntegerField()
+    new_stock = models.IntegerField()
+    reason = models.CharField(max_length=255, default="Admin Manual Edit")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"StockAdjustment {self.product.name}: {self.old_stock} -> {self.new_stock} by {self.user}"
+
