@@ -1,49 +1,116 @@
-# Lilla
+# LILLA - Headless Premium Skincare E-commerce Storefront
 
-Lilla is a high-performance, modern e-commerce template specifically engineered for cosmetic, skincare, and beauty brands. Developed leveraging Next.js and Tailwind CSS, this repository provides a robust foundation for building scalable, visually compelling online storefronts.
+LILLA is a high-performance, modern headless e-commerce platform engineered for premium cosmetic, skincare, and beauty brands. The architecture is split into a Next.js frontend storefront and a Django REST Framework backend API, providing a scalable and secure foundation for online retail.
 
-## Comprehensive Feature Set
+---
 
-- **Premium User Interface and Experience**: Delivers an elegant, minimalistic design aesthetic complemented by sophisticated, fluid animations powered by the Framer Motion library.
-- **Next.js App Router Architecture**: Built upon the latest Next.js paradigms to ensure optimal server-side rendering, static site generation, and superior Search Engine Optimization (SEO) metrics.
-- **Mobile-First Responsive Design**: Flawless, app-like mobile experience. Features include an Amazon-style mobile cart layout, an intuitive sliding hamburger menu, horizontally-scrollable trust badges, and carefully calibrated mobile typography.
-- **Modular E-Commerce Components**: Includes a suite of highly customizable, ready-to-deploy sections such as the Hero Switcher, Best Sellers Carousel, Category Navigation, Skin Concern Filters, Combo Discovery, and Time-Sensitive Deals of the Day.
+## Architecture & System Overview
+
+- **Headless Next.js Storefront**: Responsive, mobile-first design with smooth layout animations (Framer Motion) and optimized images/fonts.
+- **Django REST Framework (DRF) Backend**: Powers inventory management, transactional checkouts with row-level locks, dynamic OTP authentication, and cache-backed API services.
+
+---
 
 ## Technical Stack
 
-This project utilizes modern web development technologies to ensure maintainability, performance, and developer ergonomics:
+### Storefront (Frontend)
+- **Framework**: Next.js (App Router)
+- **Styling**: Tailwind CSS & Vanilla CSS
+- **Animation**: Framer Motion
+- **Iconography**: Lucide React
+- **Observability**: Next.js Sentry config with telemetry filters
 
-- **Framework**: [Next.js](https://nextjs.org/)
-- **UI Library**: [React](https://react.dev/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Animation**: [Framer Motion](https://www.framer.com/motion/)
-- **Iconography**: [Lucide React](https://lucide.dev/)
+### API Services (Backend)
+- **Framework**: Django & Django REST Framework (DRF)
+- **Database**: SQLite (Local Dev) / PostgreSQL (Production ready via `dj-database-url`)
+- **Cache**: Redis via `django-redis`
+- **Authentication**: Redis-backed cryptographically secure OTP & JWT (`djangorestframework-simplejwt`)
+- **Observability**: Django Sentry SDK with privacy scrubs
 
-## Installation and Setup
+---
 
-To deploy this template locally for development or evaluation, please execute the following steps:
+## Production Hardening & Telemetry (Phase 6)
 
-1.  Clone the repository to your local machine.
-2.  Navigate to the project root directory.
-3.  Install the required project dependencies:
+The platform is equipped with production-grade reliability features:
 
-        npm install
+1. **Django Rate Limiting (Throttle Blocks)**:
+   - Configured custom throttle rates using DRF's `SimpleRateThrottle` for auth endpoints.
+   - Throttles requests to `/api/auth/request-otp/` (3 requests/min per IP/identity) and `/api/auth/verify-otp/` (5 attempts/min) to defend against brute force.
+   - Responds with HTTP 429 and accurate `Retry-After` headers.
 
-4.  Initialize the local development server:
+2. **Database Query Eager Loading Audit**:
+   - Explicitly chains `.select_related()` and `.prefetch_related()` inside catalog and bundle retrieval views to avoid N+1 queries.
+   - Chained eager loading on transactional operations (such as Orders to Users and OrderItems).
 
-        npm run dev
+3. **Frontend CLS & Asset Optimization**:
+   - Maximized Cumulative Layout Shift (CLS) scores by configuring Google Font loading (`Darker Grotesque`) with `display: swap` in the root layout.
+   - Optimized `next/image` components inside Product Cards with responsive `sizes` definitions, preloading priority flags, and blurred placeholder animations.
 
-5.  Access the application by navigating to [http://localhost:3000](http://localhost:3000) in your preferred web browser.
+4. **Observability & Privacy Telemetry (Sentry)**:
+   - Installed Sentry SDK integrations on both frontend and backend.
+   - Implemented edge-safe privacy filters on both Django and Next.js layers to scrub raw OTP values, JWT secrets, and `Authorization`/`Cookie` headers from error telemetry logs.
 
-## Project Structure
+5. **Structured JSON Logging Engine**:
+   - Configured Django logging to output machine-readable logs in JSON format via a custom `JSONFormatter`.
+   - Dedicated loggers track security anomalies (`lilla.security`) like OTP failures and transactional checkout events (`lilla.transaction`) like row-lock completions.
 
-The application follows a standard Next.js App Router directory structure:
+6. **Critical Path Integration Test Suite**:
+   - Formulated a comprehensive testing framework asserting the complete OTP lifecycle, cache token clearance, JWT responses, and atomic checkout stock checks under high concurrency (e.g. database rollback when stock is depleted).
+   - Configured tests to run on isolated mock-caches (`LocMemCache`) for headless test execution.
 
-- `/app`: Contains the routing logic, page components, and global layout definitions.
-- `/components`: Houses modular, reusable React components utilized across various sections of the application.
-- `/lib`: Stores shared utility functions, configuration files, and static data structures.
-- `/images`: Serves as the repository for static image assets required by the theme.
+---
 
-## Customization Guidelines
+## Local Development & Setup
 
-The theme is designed for high extensibility. Design tokens, including color palettes, typography, and spacing conventions, can be globally modified within the `tailwind.config.ts` file. Component-specific logic and data arrays are abstracted to facilitate rapid customization without requiring deep architectural changes.
+A bootstrap script `run.bat` is available in the root to quickly launch both services.
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+
+### Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+5. Start the backend server:
+   ```bash
+   python manage.py runserver
+   ```
+
+### Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Copy environment template and configure settings:
+   ```bash
+   cp .env.example .env.local
+   ```
+4. Start the frontend server:
+   ```bash
+   npm run dev
+   ```
+
+### Running Backend Tests
+Ensure your backend virtual environment is active, then run:
+```bash
+python backend/manage.py test api
+```
