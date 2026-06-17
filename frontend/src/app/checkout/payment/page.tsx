@@ -8,6 +8,10 @@ import { PaymentSummary } from "@/components/checkout/PaymentSummary";
 import { useStore } from "@/store/useStore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_51PlaceholderKey");
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -82,7 +86,11 @@ export default function PaymentPage() {
 
           {/* Column Block Two (Center Data Collection Canvas) */}
           <div className="w-full lg:w-2/4">
-            {paymentMethod === "CARD" && <CreditCardForm />}
+            {paymentMethod === "CARD" && (
+              <Elements stripe={stripePromise}>
+                <CreditCardForm />
+              </Elements>
+            )}
             
             {paymentMethod === "COD" && (
               <div className="w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-sm font-sans flex flex-col h-full min-h-[400px]">
