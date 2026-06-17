@@ -24,6 +24,20 @@ export function BillingForm() {
   const updateBillingAddress = useStore((s) => s.updateBillingAddress);
   const setSameAsShipping = useStore((s) => s.setSameAsShipping);
 
+  const user = useStore((s) => s.user);
+  const saveAddress = useStore((s) => s.checkoutForm.saveAddress);
+  const setSaveAddress = useStore((s) => s.setSaveAddress);
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetch("/api/addresses")
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => setSavedAddresses(data))
+        .catch((err) => console.error("Error loading saved addresses:", err));
+    }
+  }, [user]);
+
   // Seed from legacy localStorage if Zustand is empty (migration support)
   useEffect(() => {
     if (!billingAddress.firstName && !billingAddress.email) {
@@ -46,6 +60,42 @@ export function BillingForm() {
       <h2 className="font-serif text-3xl mb-6">Billing Address</h2>
 
       <form className="space-y-4 font-sans text-gray-800" onSubmit={(e) => e.preventDefault()}>
+        {user && savedAddresses.length > 0 && (
+          <div className="relative mb-6">
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Use Saved Address</label>
+            <div className="relative">
+              <select
+                onChange={(e) => {
+                  const selected = savedAddresses.find((a) => a.id === parseInt(e.target.value));
+                  if (selected) {
+                    updateBillingAddress({
+                      firstName: selected.first_name,
+                      lastName: selected.last_name,
+                      email: selected.email,
+                      country: selected.country,
+                      address: selected.address,
+                      state: selected.state,
+                      city: selected.city,
+                      zip: selected.zip,
+                      phone: selected.phone,
+                    });
+                  }
+                }}
+                className={selectClass}
+              >
+                <option value="">-- Choose a Saved Address --</option>
+                {savedAddresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.first_name} {a.last_name} - {a.address}, {a.city} ({a.zip})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                <ChevronDown className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <input type="text" placeholder="First Name" value={billingAddress.firstName}
             onChange={(e) => handle("firstName", e.target.value)} className={inputClass} />
@@ -107,6 +157,21 @@ export function BillingForm() {
             My billing and shipping address are the same
           </label>
         </div>
+
+        {user && (
+          <div className="flex items-center space-x-3 pt-2">
+            <input
+              type="checkbox"
+              id="save-address"
+              checked={saveAddress}
+              onChange={(e) => setSaveAddress(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-black focus:ring-black accent-black"
+            />
+            <label htmlFor="save-address" className="text-gray-700 select-none cursor-pointer">
+              Save this address for future checkouts
+            </label>
+          </div>
+        )}
       </form>
     </div>
   );
