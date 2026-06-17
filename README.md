@@ -36,6 +36,15 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Sentry Observability Filters**: Edge-safe Sentry telemetry integrations scrub sensitive fields (OTP keys, passwords, JWT access tokens, and `Authorization` headers) before sending telemetry frames.
 - **Structured JSON Logging**: Outputs machine-readable JSON log format via a custom Django `JSONFormatter`, categorizing security audits (`lilla.security`) and transaction events (`lilla.transaction`).
 
+### 7. Administrative Tools & Audit Logs
+- **Role-Gated Dashboard**: Admin-restricted control panel at `/admin` for product catalog management, order oversight, and user logs monitoring.
+- **Stock Audit Trails**: Logs manual inventory changes to the `StockAdjustment` database history whenever staff edits stock levels.
+
+### 8. Account Persistence & Session Syncing
+- **Guest Favorites Sync**: Merges client-side local storage wishlists with the backend database upon customer login.
+- **Saved Address Selector**: Checkout billing form retrieves previous addresses in a selector dropdown, with a "Save address" checkbox for new ones.
+- **Customer Order History**: Interactive purchase list at `/account/orders` showing order codes, dates, color-coded statuses, items, and pricing.
+
 ---
 
 ## 💻 Tech Stack
@@ -72,6 +81,8 @@ Lilla/
 │       ├── throttling.py            # Custom DRF throttle rate limiters
 │       ├── logging_formatters.py    # Structured JSON log formatters
 │       ├── test_integration.py      # Concurrency & OTP lifecycle test suites
+│       ├── test_admin.py            # Administrative permissions & stock adjustment logs tests
+│       ├── test_account.py          # Favorites sync & address default toggle tests
 │       └── signals.py               # Asynchronous Next.js ISR revalidation hooks
 │
 └── frontend/                        # Next.js Storefront App
@@ -79,7 +90,7 @@ Lilla/
     ├── next.config.mjs              # Next.js configuration
     ├── sentry.*.config.ts           # Sentry configurations (Client, Server, Edge)
     └── src/
-        ├── app/                     # Page views and API Proxies
+        ├── app/                     # Page views (e.g., /admin, /account/orders) & API Proxies
         ├── components/              # React components (Cart, Auth, ProductCard)
         └── store/                   # Zustand state configuration
 ```
