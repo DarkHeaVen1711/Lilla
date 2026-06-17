@@ -1,16 +1,12 @@
 import time
 import os
-import re
-import random
 import logging
 
 security_logger = logging.getLogger('lilla.security')
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
 from django.conf import settings
-from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status, generics
 import secrets
 from django.core.cache import cache
@@ -19,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Category, Product, Order, OrderItem, OTPVerification, Combo
+from .models import Category, Product, Order, OrderItem, Combo
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
@@ -27,21 +23,6 @@ from .serializers import (
 )
 from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
-EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
-PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
-
-def validate_auth_method(value):
-    if not value:
-        return False, "Email or Phone is required"
-    if '@' in value:
-        if not EMAIL_REGEX.match(value):
-            return False, "Invalid email address format"
-        return True, "email"
-    else:
-        cleaned_phone = re.sub(r'[\s()-]', '', value)
-        if not PHONE_REGEX.match(cleaned_phone):
-            return False, "Invalid phone number format. Must contain 3-15 digits, optionally starting with '+'."
-        return True, "phone"
 
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
@@ -194,131 +175,6 @@ class HomepageDataView(APIView):
         }
         return Response(data)
 
-
-def send_email_otp(email, otp):
-    subject = "Lilla Verification Code"
-    message = f"Your verification code is: {otp}. It will expire in 5 minutes."
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lilla.com')
-    try:
-        send_mail(subject, message, from_email, [email], fail_silently=False)
-        print(f"[EMAIL SENDER] Successfully sent email to {email}")
-    except Exception as e:
-        print(f"[EMAIL SENDER] Error sending email to {email}: {e}")
-
-def send_sms_otp(phone, otp):
-    message_body = f"Your Lilla verification code is: {otp}"
-    print(f"\n[SMS SENDER] Sending SMS to {phone}: '{message_body}'")
-    
-    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-    from_number = os.getenv('TWILIO_PHONE_NUMBER')
-    
-    if account_sid and auth_token and from_number:
-        try:
-            from twilio.rest import Client
-            client = Client(account_sid, auth_token)
-            client.messages.create(
-                body=message_body,
-                from_=from_number,
-                to=phone
-            )
-            print(f"[SMS SENDER] Twilio successfully sent message to {phone}")
-        except Exception as e:
-            print(f"[SMS SENDER] Twilio error sending message to {phone}: {e}")
-    else:
-        print("[SMS SENDER] Twilio keys not configured.")
-
-class AuthLoginView(APIView):
-    def post(self, request):
-        auth_method = request.data.get('auth_method', '').strip()
-        is_valid, result = validate_auth_method(auth_method)
-        if not is_valid:
-            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Generate random 4-digit code
-        otp_code = str(random.randint(1000, 9999))
-        
-        # Save or update OTPVerification model
-        expires_at = timezone.now() + timedelta(minutes=5)
-        OTPVerification.objects.update_or_create(
-            auth_method=auth_method,
-            defaults={
-                "otp_code": otp_code,
-                "expires_at": expires_at
-            }
-        )
-        
-        # Print OTP to terminal console for local verification
-        print("\n" + "="*50)
-        print(f"[OTP DEV LOG] Generated OTP for: {auth_method}")
-        print(f"[OTP DEV LOG] Verification Code: {otp_code}")
-        print("="*50 + "\n")
-        
-        # Route OTP to Email or SMS
-        has_twilio = bool(os.getenv('TWILIO_ACCOUNT_SID'))
-        is_console_mail = getattr(settings, 'EMAIL_BACKEND', '') == 'django.core.mail.backends.console.EmailBackend'
-        
-        otp_in_response = False
-        if result == "email":
-            send_email_otp(auth_method, otp_code)
-            if is_console_mail:
-                otp_in_response = True
-        elif result == "phone":
-            send_sms_otp(auth_method, otp_code)
-            if not has_twilio:
-                otp_in_response = True
-        
-        response_data = {
-            "status": "success",
-            "message": "OTP verification code sent",
-            "auth_method": auth_method
-        }
-        if otp_in_response:
-            response_data["dev_otp"] = otp_code
-            
-        return Response(response_data)
-
-
-class AuthVerifyView(APIView):
-    def post(self, request):
-        auth_method = request.data.get('auth_method', '').strip()
-        otp = request.data.get('otp', '').strip()
-
-        if not auth_method or not otp:
-            return Response({"error": "Both auth_method and otp are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        is_valid_otp = False
-        if otp in ["1234", "1111", "0000"]:
-            is_valid_otp = True
-        else:
-            try:
-                record = OTPVerification.objects.filter(
-                    auth_method=auth_method,
-                    expires_at__gt=timezone.now()
-                ).latest('created_at')
-                
-                if record.otp_code == otp:
-                    is_valid_otp = True
-            except OTPVerification.DoesNotExist:
-                pass
-
-        if not is_valid_otp:
-            return Response({"error": "Invalid verification code. Use code printed in console."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user, created = User.objects.get_or_create(username=auth_method)
-        if '@' in auth_method:
-            user.email = auth_method
-            user.save()
-            
-        token, _ = Token.objects.get_or_create(user=user)
-        
-        return Response({
-            "token": token.key,
-            "user": {
-                "auth_method": auth_method,
-                "id": user.id
-            }
-        })
 
 
 class OrderCreateView(generics.ListCreateAPIView):
