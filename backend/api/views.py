@@ -182,6 +182,8 @@ class OrderCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
+            if self.request.user.is_staff:
+                return Order.objects.select_related('user').prefetch_related('items').all()
             return Order.objects.select_related('user').prefetch_related('items').filter(user=self.request.user)
         
         user_id = self.request.query_params.get('user_identifier')
@@ -330,7 +332,8 @@ class VerifyOTPView(APIView):
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email
+                "email": user.email,
+                "is_staff": user.is_staff
             }
         }, status=status.HTTP_200_OK)
 
@@ -382,3 +385,18 @@ class OrderRefundView(APIView):
                 {"error": f"Stripe refund failed: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+from rest_framework import serializers
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'is_staff', 'last_login', 'date_joined')
+
+
+class AdminUserListView(generics.ListAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = AdminUserSerializer
+
