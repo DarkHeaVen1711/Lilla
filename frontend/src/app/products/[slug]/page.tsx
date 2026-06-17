@@ -2,6 +2,21 @@ import { notFound } from "next/navigation";
 import { ProductDetailPDP } from "@/components/product/ProductDetailPDP";
 import { getProductBySlug, getHomePageData } from "@/lib/homepageData";
 
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+  if (!product) return {};
+  return {
+    title: `${product.name} | LILAA`,
+    description: product.description,
+    openGraph: {
+      title: product.name,
+      description: product.description,
+      images: [{ url: typeof product.image === "string" ? product.image : (product.image as any).src }],
+    },
+  };
+}
+
 export default async function ProductPage({
   params,
 }: Readonly<{
@@ -44,11 +59,28 @@ export default async function ProductPage({
   };
 
   const homePageData = await getHomePageData();
-  // Filter out the current product from recommendations if present
   const recommendedProducts = homePageData.bestSellers.filter((p) => p.slug !== slug);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": plainProduct.name,
+    "image": typeof plainProduct.image === "string" ? plainProduct.image : plainProduct.image.src,
+    "description": plainProduct.description,
+    "offers": {
+      "@type": "Offer",
+      "price": plainProduct.price,
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock",
+    },
+  };
 
   return (
     <main className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ProductDetailPDP product={plainProduct as any} recommendedProducts={recommendedProducts} />
     </main>
   );
