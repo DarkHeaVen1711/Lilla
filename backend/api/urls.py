@@ -5,6 +5,7 @@ from .views import (
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView
 )
+from .views_payments import CreatePaymentIntentView
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet, basename='product')
@@ -17,6 +18,7 @@ urlpatterns = [
     path('auth/verify/', AuthVerifyView.as_view(), name='auth-verify'),
     path('auth/request-otp/', RequestOTPView.as_view(), name='auth-request-otp'),
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
+    path('payments/create-intent/', CreatePaymentIntentView.as_view(), name='payments-create-intent'),
     path('orders/', OrderCreateView.as_view(), name='order-create'),
     path('orders/<uuid:id>/', OrderDetailView.as_view(), name='order-detail'),
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
