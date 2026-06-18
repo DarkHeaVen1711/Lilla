@@ -83,7 +83,7 @@ interface LillaStore {
     shippingFee: number;
     orderTotal: number;
   };
-  addToCart: (item: Omit<LineItem, "quantity">) => void;
+  addToCart: (item: Omit<LineItem, "quantity">, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -182,14 +182,14 @@ export const useStore = create<LillaStore>()(
         orderTotal: 0,
       },
 
-      addToCart: (product) =>
+      addToCart: (product, qty = 1) =>
         set((state) => {
           const existing = state.cart.items.find((i) => i.id === product.id);
           const items = existing
             ? state.cart.items.map((i) =>
-                i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+                i.id === product.id ? { ...i, quantity: i.quantity + qty } : i
               )
-            : [...state.cart.items, { ...product, quantity: 1 }];
+            : [...state.cart.items, { ...product, quantity: qty }];
           const calcs = recalcCart(items, state.cart.couponActive);
           return { cart: { ...state.cart, items, ...calcs } };
         }),
@@ -256,7 +256,7 @@ export const useStore = create<LillaStore>()(
         if (!intent) return;
         // Execute the cached action
         if (intent.actionType === "ADD_TO_CART") {
-          get().addToCart(intent.payload);
+          get().addToCart(intent.payload, intent.payload.quantity);
         }
         intent.successCallback();
         set({ frozenIntent: null });

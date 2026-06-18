@@ -63,7 +63,11 @@ const CustomCartIcon = ({ className }: { className?: string }) => (
 );
 
 export function Navbar({ links }: NavbarProps) {
-  const { cartItems, cartCount, favoriteCount, removeFromCart, updateQuantity } = useCommerce();
+  const { favoriteCount } = useCommerce();
+  const cartItems = useStore((s) => s.cart.items);
+  const removeFromCart = useStore((s) => s.removeFromCart);
+  const updateQuantity = useStore((s) => s.updateQuantity);
+  const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const user = useStore((s) => s.user);
   const logoutUser = useStore((s) => s.logoutUser);

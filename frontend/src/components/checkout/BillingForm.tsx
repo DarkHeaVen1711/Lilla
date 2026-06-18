@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ChevronDown } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { apiFetch } from "@/lib/apiClient";
 
 const COUNTRIES = [
   { code: "US", name: "United States" }, { code: "IN", name: "India" },
@@ -31,7 +32,7 @@ export function BillingForm() {
 
   useEffect(() => {
     if (user) {
-      fetch("/api/addresses")
+      apiFetch("/api/addresses")
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => setSavedAddresses(data))
         .catch((err) => console.error("Error loading saved addresses:", err));

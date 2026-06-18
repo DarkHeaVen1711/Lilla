@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, ShoppingBag } from "lucide-react";
 
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
 import type { CommerceProduct } from "@/lib/homepageData";
 
 type CatalogCardProps = {
@@ -12,7 +15,9 @@ type CatalogCardProps = {
 };
 
 export function CatalogCard({ product }: CatalogCardProps) {
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const addToCart = useStore((s) => s.addToCart);
+  const withAuthGate = useAuthGate();
   const favorite = isFavorite(product.id);
 
   return (
@@ -37,7 +42,20 @@ export function CatalogCard({ product }: CatalogCardProps) {
         <button
           type="button"
           aria-label="Add to cart"
-          onClick={() => addToCart(product)}
+          onClick={() => {
+            withAuthGate(
+              "ADD_TO_CART",
+              { ...product, quantity: 1 },
+              () => {
+                addToCart(product);
+                toast.success("Added to cart!", {
+                  description: product.name,
+                  icon: <ShoppingBag className="w-4 h-4" />,
+                  duration: 2500,
+                });
+              }
+            );
+          }}
           className="absolute bottom-4 left-4 right-4 flex items-center justify-center gap-2 rounded-full bg-black px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-black/80"
         >
           <ShoppingCart className="h-4 w-4" />

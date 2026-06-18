@@ -20,7 +20,7 @@ type DiscoverCombosProps = {
 };
 
 export function DiscoverCombosSection({ products, title }: DiscoverCombosProps) {
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
   
   return (
     <motion.section

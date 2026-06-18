@@ -149,6 +149,29 @@ export async function getProducts(options?: {
 }
 
 export async function getProductBySlug(slug: string): Promise<FrontendProduct | null> {
+  if (slug === "lilaa-glowy-cream") {
+    return {
+      id: "lilaa-glowy-cream",
+      slug: "lilaa-glowy-cream",
+      name: "Lilaa glowy cream (30ml)",
+      description: "A lightweight cream for a luminous finish.",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/magnific_change-the-logo-to-img1-d_2974524054%201-1E5ZDnAdm0KkWgWRhOTOwsLYIsPEGK.png",
+      price: 18,
+      originalPrice: 20,
+      discount: "10% off",
+      rating: 4.8,
+      reviews: 108,
+      category: "Skin",
+      expiresOn: "2028-12-31",
+      features: [
+        { badge: "Glow", title: "Luminous Finish", description: "Provides a natural healthy glow all day.", x1: 20, y1: 26, x2: 45, y2: 35 },
+        { badge: "Hydration", title: "Hydrating Texture", description: "Locks in skin moisture and hydration.", x1: 32, y1: 80, x2: 48, y2: 65 },
+        { badge: "Skin Barrier", title: "Barrier Support", description: "Enhances skin natural barrier properties.", x1: 80, y1: 36, x2: 56, y2: 48 }
+      ],
+      skinConcerns: ["Dryness", "Dullness"],
+      keyIngredients: ["Vitamin C", "Hyaluronic Acid"],
+    };
+  }
   try {
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${slug}/`, { cache: "no-store" }, 5000);
     if (res.status === 404) return null;

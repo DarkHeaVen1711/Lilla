@@ -5,6 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Search, User, X, Star, Minus, Plus, MapPin, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
+import { ShoppingBag } from "lucide-react";
 import { Product, SkincareProduct, MakeupProduct } from "@/lib/products";
 import type { CommerceProduct } from "@/lib/homepageData";
 
@@ -41,7 +45,11 @@ type ProductDetailPDPProps = {
 };
 
 export function ProductDetailPDP({ product: initialProduct, recommendedProducts }: ProductDetailPDPProps) {
-  const { addToCart, toggleFavorite, isFavorite, updateQuantity, cartItems } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const cartItems = useStore((s) => s.cart.items);
+  const addToCart = useStore((s) => s.addToCart);
+  const updateQuantity = useStore((s) => s.updateQuantity);
+  const withAuthGate = useAuthGate();
   
   // Reconstruct OOP class instance from plain serialized props
   const product = useMemo(() => {
@@ -230,12 +238,18 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   };
 
   const handleAddToCart = () => {
-    // Add to cart using provider
-    addToCart(product as any);
-    // If quantity is more than 1, update in context
-    const existing = cartItems.find((item) => item.id === product.id);
-    const targetQty = (existing?.quantity || 0) + quantity;
-    updateQuantity(product.id, targetQty);
+    withAuthGate(
+      "ADD_TO_CART",
+      { ...product, quantity },
+      () => {
+        addToCart(product as any, quantity);
+        toast.success("Added to cart!", {
+          description: `${product.name} (Qty: ${quantity})`,
+          icon: <ShoppingBag className="w-4 h-4" />,
+          duration: 2500,
+        });
+      }
+    );
   };
 
   const handleThumbnailClick = (thumb: any, idx: number) => {
@@ -408,6 +422,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                 <div className="flex items-center border border-gray-200 rounded-full h-[56px] px-2 bg-gray-50/50">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Decrease quantity"
                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black rounded-full hover:bg-white transition-colors"
                   >
                     <Minus className="w-4 h-4" />
@@ -415,6 +430,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                   <span className="w-10 text-center font-extrabold text-2xl">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
+                    aria-label="Increase quantity"
                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black rounded-full hover:bg-white transition-colors"
                   >
                     <Plus className="w-4 h-4" />
