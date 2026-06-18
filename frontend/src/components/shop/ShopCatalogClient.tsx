@@ -207,6 +207,81 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
           </button>
         </div>
       )}
+      {/* Sliding Sidebar Drawer */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-[400px] h-full bg-white shadow-2xl z-10 flex flex-col animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <h3 className="text-2xl font-bold font-serif text-black">Filter & Sort</h3>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors"
+                aria-label="Close filters"
+              >
+                <X className="w-5 h-5 text-gray-500 hover:text-black" />
+              </button>
+            </div>
+
+            {/* Scrollable Filters */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
+              {/* Sorting Section */}
+              <div className="space-y-3">
+                <h4 className="text-base font-extrabold uppercase tracking-wider text-gray-400">Sort By</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "", label: "Featured" },
+                    { id: "price_asc", label: "Price: Low to High" },
+                    { id: "price_desc", label: "Price: High to Low" },
+                    { id: "rating", label: "Top Rated" },
+                    { id: "newest", label: "Newest Arrivals" },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setActiveSort(option.id)}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-bold text-left transition-all border ${
+                        activeSort === option.id
+                          ? "bg-black border-black text-white shadow-sm"
+                          : "bg-gray-50 border-transparent text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-6 border-t border-gray-100 flex gap-3 bg-gray-50/50">
+              <button
+                onClick={() => {
+                  setSelectedCategories([]);
+                  setSelectedConcerns([]);
+                  setSelectedIngredients([]);
+                  setActiveSort("");
+                }}
+                className="flex-1 py-3.5 border border-gray-300 hover:border-black rounded-xl text-sm font-bold text-black bg-white transition-all"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="flex-1 py-3.5 bg-black hover:bg-gray-800 rounded-xl text-sm font-bold text-white transition-all shadow-sm"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
