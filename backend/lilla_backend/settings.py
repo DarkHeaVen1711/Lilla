@@ -104,11 +104,12 @@ WSGI_APPLICATION = 'lilla_backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 import os
+import sys
 import dj_database_url
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-if DATABASE_URL:
+if DATABASE_URL and 'test' not in sys.argv:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
     }
@@ -120,15 +121,24 @@ else:
         }
     }
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
         }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 
 # Password validation
