@@ -5,6 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Search, User, X, Star, Minus, Plus, MapPin, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
+import { ShoppingBag } from "lucide-react";
 import { Product, SkincareProduct, MakeupProduct } from "@/lib/products";
 import type { CommerceProduct } from "@/lib/homepageData";
 
@@ -41,7 +45,11 @@ type ProductDetailPDPProps = {
 };
 
 export function ProductDetailPDP({ product: initialProduct, recommendedProducts }: ProductDetailPDPProps) {
-  const { addToCart, toggleFavorite, isFavorite, updateQuantity, cartItems } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const cartItems = useStore((s) => s.cart.items);
+  const addToCart = useStore((s) => s.addToCart);
+  const updateQuantity = useStore((s) => s.updateQuantity);
+  const withAuthGate = useAuthGate();
   
   // Reconstruct OOP class instance from plain serialized props
   const product = useMemo(() => {
@@ -230,12 +238,23 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   };
 
   const handleAddToCart = () => {
-    // Add to cart using provider
-    addToCart(product as any);
-    // If quantity is more than 1, update in context
-    const existing = cartItems.find((item) => item.id === product.id);
-    const targetQty = (existing?.quantity || 0) + quantity;
-    updateQuantity(product.id, targetQty);
+    withAuthGate(
+      "ADD_TO_CART",
+      { ...product, quantity },
+      () => {
+        const existing = cartItems.find((item) => item.id === product.id);
+        const targetQty = (existing?.quantity || 0) + quantity;
+        addToCart(product as any);
+        if (targetQty > 1) {
+          updateQuantity(product.id, targetQty);
+        }
+        toast.success("Added to cart!", {
+          description: `${product.name} (Qty: ${quantity})`,
+          icon: <ShoppingBag className="w-4 h-4" />,
+          duration: 2500,
+        });
+      }
+    );
   };
 
   const handleThumbnailClick = (thumb: any, idx: number) => {
