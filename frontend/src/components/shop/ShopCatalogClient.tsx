@@ -108,26 +108,58 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
 
       {/* Category Pills Filter Bar */}
       <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-6 py-2.5 rounded-full text-base font-bold transition-all border ${
-              activeCategory === cat.id
-                ? "bg-black border-black text-white shadow-sm"
-                : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+        <button
+          onClick={() => setSelectedCategories([])}
+          className={`px-6 py-2.5 rounded-full text-base font-bold transition-all border ${
+            selectedCategories.length === 0
+              ? "bg-black border-black text-white shadow-sm"
+              : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
+          }`}
+        >
+          Shop All
+        </button>
+        {allCategories.map((cat) => {
+          const isActive = selectedCategories.includes(cat.slug);
+          return (
+            <button
+              key={cat.slug}
+              onClick={() => {
+                if (isActive) {
+                  setSelectedCategories(selectedCategories.filter((slug) => slug !== cat.slug));
+                } else {
+                  setSelectedCategories([...selectedCategories, cat.slug]);
+                }
+              }}
+              className={`px-6 py-2.5 rounded-full text-base font-bold transition-all border ${
+                isActive
+                  ? "bg-black border-black text-white shadow-sm"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Products Results Header */}
       <div className="flex items-center justify-between border-b border-gray-200/60 pb-4 mt-6">
-        <div className="flex items-center gap-2 text-gray-500 font-bold text-sm uppercase tracking-wider">
-          <SlidersHorizontal className="w-4 h-4 text-black" />
-          <span>Results count: {filteredProducts.length} Items</span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex items-center gap-2 bg-brand-bg-gray border border-gray-200 hover:border-black rounded-full px-5 py-2.5 text-sm font-bold text-black transition-all shadow-sm"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters & Sorting
+            {(selectedCategories.length > 0 || selectedConcerns.length > 0 || selectedIngredients.length > 0 || activeSort) && (
+              <span className="bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-extrabold ml-1">
+                {(selectedCategories.length > 0 ? 1 : 0) + (selectedConcerns.length > 0 ? 1 : 0) + (selectedIngredients.length > 0 ? 1 : 0) + (activeSort ? 1 : 0)}
+              </span>
+            )}
+          </button>
+          <span className="text-gray-500 font-bold text-sm uppercase tracking-wider hidden sm:inline-block">
+            Results count: {products.length} Items
+          </span>
         </div>
         
         {searchQuery && (
