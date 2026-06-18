@@ -50,6 +50,86 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const addToCart = useStore((s) => s.addToCart);
   const updateQuantity = useStore((s) => s.updateQuantity);
   const withAuthGate = useAuthGate();
+
+  const user = useStore((s) => s.user);
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [ratingVal, setRatingVal] = useState<number>(Number(initialProduct.rating) || 4.8);
+  const [reviewsCount, setReviewsCount] = useState<number>(Number(initialProduct.reviews) || 0);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch(`/api/products/${initialProduct.slug}/reviews/`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviewsList(data);
+        if (data.length > 0) {
+          const totalRating = data.reduce((sum: number, r: any) => sum + r.rating, 0);
+          setRatingVal(totalRating / data.length);
+          setReviewsCount(data.length);
+        } else {
+          setRatingVal(4.8);
+          setReviewsCount(0);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, [initialProduct.slug]);
+
+  const handleSubmitReview = async () => {
+    if (!newComment.trim()) {
+      toast.error("Please enter a comment.");
+      return;
+    }
+    setIsSubmittingReview(true);
+    try {
+      const res = await fetch(`/api/products/${initialProduct.slug}/reviews/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: newRating, comment: newComment }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Review submitted successfully!");
+        setNewComment("");
+        setNewRating(5);
+        fetchReviews();
+      } else {
+        const errorMsg = data.non_field_errors?.[0] || data.detail || data.message || "Failed to submit review.";
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      toast.error("Failed to submit review.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const starDistribution = useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviewsList.forEach((r) => {
+      const rating = Math.round(r.rating) as 1 | 2 | 3 | 4 | 5;
+      if (rating >= 1 && rating <= 5) {
+        counts[rating]++;
+      }
+    });
+    const total = reviewsList.length || 1;
+    return [
+      { star: 5, weight: `${Math.round((counts[5] / total) * 100)}%` },
+      { star: 4, weight: `${Math.round((counts[4] / total) * 100)}%` },
+      { star: 3, weight: `${Math.round((counts[3] / total) * 100)}%` },
+      { star: 2, weight: `${Math.round((counts[2] / total) * 100)}%` },
+      { star: 1, weight: `${Math.round((counts[1] / total) * 100)}%` },
+    ];
+  }, [reviewsList]);
   
   // Reconstruct OOP class instance from plain serialized props
   const product = useMemo(() => {
