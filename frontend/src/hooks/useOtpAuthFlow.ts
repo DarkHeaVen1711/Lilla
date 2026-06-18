@@ -72,6 +72,60 @@ export function useOtpAuthFlow() {
     }
   };
 
+  const handleVerifyOtp = async (e: React.FormEvent, onSuccess: () => void) => {
+    e.preventDefault();
+    const code = otp.join("");
+    if (code.length !== 6) return false;
+
+    setIsLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ identity: finalAuthMethod, otp: code }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        setError(errorData.detail || errorData.error || "Invalid verification code.");
+        return false;
+      }
+      const data = await res.json();
+
+      const cookieRes = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ access: data.access, refresh: data.refresh }),
+      });
+
+      if (!cookieRes.ok) {
+        throw new Error("Failed to initialize secure session cookies.");
+      }
+
+      localStorage.setItem("lilla-user", JSON.stringify(data.user));
+      loginUser(finalAuthMethod, !!data.user?.is_staff);
+      onSuccess();
+      return true;
+    } catch (err: any) {
+      console.error("Auth verify OTP error:", err);
+      setError(err.message || "Error verifying OTP code.");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setAuthMethod("");
+    setOtp(["", "", "", "", "", ""]);
+    setError("");
+    setDevOtp(null);
+  };
+
   return {
     step,
     setStep,
@@ -94,5 +148,7 @@ export function useOtpAuthFlow() {
     isValid,
     hasPhoneFormat,
     handleSendOtp,
+    handleVerifyOtp,
+    resetForm,
   };
 }
