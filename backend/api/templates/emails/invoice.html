@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LILLA Invoice</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background-color: #fafafa;
+      color: #333333;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border: 1px solid #eaeaea;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .header {
+      background-color: #000000;
+      padding: 30px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .order-meta {
+      margin-bottom: 30px;
+      font-size: 14px;
+      color: #666666;
+      line-height: 1.6;
+    }
+    .order-meta strong {
+      color: #000000;
+    }
+    .shipping-box {
+      background: #f9f9f9;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .shipping-box h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #000000;
+    }
+    .invoice-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    .invoice-table th {
+      border-bottom: 2px solid #000000;
+      text-align: left;
+      padding: 12px 8px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #888888;
+    }
+    .invoice-table td {
+      border-bottom: 1px solid #eeeeee;
+      padding: 15px 8px;
+      font-size: 15px;
+    }
+    .invoice-table .price-col {
+      text-align: right;
+    }
+    .totals-box {
+      width: 100%;
+      max-width: 250px;
+      margin-left: auto;
+      margin-top: 20px;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    .totals-row.grand-total {
+      border-top: 1px solid #000000;
+      margin-top: 10px;
+      padding-top: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #000000;
+    }
+    .footer {
+      background-color: #f9f9f9;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #999999;
+      border-top: 1px solid #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>LILLA</h1>
+    </div>
+    <div class="content">
+      <h2>Thank you for your order!</h2>
+      <p>We've received your payment and are preparing your package for shipment. Here is your invoice details:</p>
+      
+      <div class="order-meta">
+        <strong>Order Reference:</strong> {{ order.id }}<br>
+        <strong>Order Date:</strong> {{ order.created_at|date:"d M Y, H:i" }} UTC<br>
+        <strong>Payment Status:</strong> Paid (Stripe gateway Verified)
+      </div>
+
+      <div class="shipping-box">
+        <h3>Delivery Details</h3>
+        <strong>{{ order.shipping_name }}</strong><br>
+        {{ order.shipping_address }}<br>
+        {{ order.shipping_city }}, {{ order.shipping_postal_code }}
+      </div>
+
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="price-col">Qty</th>
+            <th class="price-col">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td class="price-col">{{ item.quantity }}</td>
+            <td class="price-col">${{ item.price }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="totals-box">
+        <div class="totals-row">
+          <span>Subtotal:</span>
+          <span>${{ subtotal|floatformat:2 }}</span>
+        </div>
+        {% if discount > 0 %}
+        <div class="totals-row" style="color: #10b981; font-weight: bold;">
+          <span>Discount ({{ order.coupon_code }}):</span>
+          <span>-${{ discount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="totals-row">
+          <span>Delivery Fee:</span>
+          <span>$15.00</span>
+        </div>
+        <div class="totals-row grand-total">
+          <span>Total Paid:</span>
+          <span>${{ total|floatformat:2 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; {% now "Y" %} LILLA Cosmetics. All rights reserved.</p>
+      <p>If you have any questions, contact us at <a href="mailto:support@lilla.com" style="color: #000000; text-decoration: underline;">support@lilla.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
