@@ -11,18 +11,18 @@ test("should verify catalogue renders and checkout redirects to login", async ({
   });
 
   // Check catalogue page rendering
-  await page.goto("/shop");
+  await page.goto("/shop", { waitUntil: "domcontentloaded" });
   const catalogHeading = page.locator("h1");
   await expect(catalogHeading).toBeVisible();
 
   // Verify cart page loads
-  await page.goto("/cart");
+  await page.goto("/cart", { waitUntil: "domcontentloaded" });
   const cartHeading = page.locator("h1");
   await expect(cartHeading).toBeVisible();
 
   // Verify checkout server-side middleware redirects to login when unauthenticated
-  await page.goto("/checkout");
-  await page.waitForURL("**/login**");
+  await page.goto("/checkout", { waitUntil: "domcontentloaded" });
+  await page.waitForURL("**/login**", { waitUntil: "domcontentloaded" });
   expect(page.url()).toContain("/login");
 });
 
@@ -67,24 +67,25 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
 
   // Pre-authenticate user via local storage to bypass auth gate
   await page.addInitScript(() => {
-    localStorage.setItem(
-      "lilla-store",
-      JSON.stringify({
-        state: {
-          user: {
-            token: "mock-token",
-            identityString: "testuser@example.com",
-            isGuest: false,
-            isStaff: false,
-            metadata: {},
-          },
-        },
-      })
-    );
+    try {
+      const existing = localStorage.getItem("lilla-store");
+      const parsed = existing ? JSON.parse(existing) : { state: {} };
+      parsed.state = parsed.state || {};
+      parsed.state.user = {
+        token: "mock-token",
+        identityString: "testuser@example.com",
+        isGuest: false,
+        isStaff: false,
+        metadata: {},
+      };
+      localStorage.setItem("lilla-store", JSON.stringify(parsed));
+    } catch (e) {
+      // ignore
+    }
   });
 
   // Go to homepage
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
 
   // Verify that the HeroProductCard add button is visible
   const heroAddButton = page.locator('button[aria-label="Add to cart"]');
@@ -98,7 +99,7 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await expect(cartBadge).toHaveText("1");
 
   // Navigate to Product Detail Page (PDP)
-  await page.goto("/products/lilaa-glowy-cream");
+  await page.goto("/products/lilaa-glowy-cream", { waitUntil: "domcontentloaded" });
 
   // Verify add button on PDP is visible
   const pdpAddButton = page.locator('button:has-text("Add to cart")').first();
@@ -121,8 +122,8 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await expect(cartBadge).toHaveText("3");
 
   // Go to cart page
-  await page.goto("/cart");
+  await page.goto("/cart", { waitUntil: "domcontentloaded" });
 
   // Verify cart item is listed
-  await expect(page.locator('p:has-text("Lilaa glowy cream (30ml)")').first()).toBeVisible();
+  await expect(page.locator('h3:has-text("Lilaa glowy cream (30ml)")').first()).toBeVisible();
 });
