@@ -567,3 +567,11 @@ class CouponValidateView(APIView):
         except Coupon.DoesNotExist:
             return Response({'valid': False, 'message': 'Invalid coupon code.'}, status=status.HTTP_200_OK)
 
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        return Response({}, status=status.HTTP_200_OK)
+
+
