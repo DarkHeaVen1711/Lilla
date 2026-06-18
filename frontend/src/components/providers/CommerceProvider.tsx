@@ -5,25 +5,16 @@ import { useStore } from "@/store/useStore";
 
 import type { CommerceProduct } from "@/lib/homepageData";
 
-type CommerceItem = CommerceProduct & { quantity: number };
-
 type CommerceContextValue = {
-  cartItems: CommerceItem[];
   favoriteItems: CommerceProduct[];
-  cartCount: number;
   favoriteCount: number;
-  addToCart: (product: CommerceProduct) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
   toggleFavorite: (product: CommerceProduct) => void;
   isFavorite: (productId: string) => boolean;
   clearFavorites: () => void;
-  clearCart: () => void;
 };
 
 const CommerceContext = createContext<CommerceContextValue | null>(null);
 
-const CART_STORAGE_KEY = "adb-cosmetic-theme-cart";
 const FAVORITES_STORAGE_KEY = "adb-cosmetic-theme-favorites";
 
 function readStorage<T>(key: string): T[] {
@@ -52,7 +43,6 @@ export function CommerceProvider({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [cartItems, setCartItems] = useState<CommerceItem[]>([]);
   const [favoriteItems, setFavoriteItems] = useState<CommerceProduct[]>([]);
   const user = useStore((s) => s.user);
 
@@ -89,48 +79,14 @@ export function CommerceProvider({
   }, [user]);
 
   useEffect(() => {
-    setCartItems(readStorage<CommerceItem>(CART_STORAGE_KEY));
     setFavoriteItems(readStorage<CommerceProduct>(FAVORITES_STORAGE_KEY));
   }, []);
-
-  useEffect(() => {
-    writeStorage(CART_STORAGE_KEY, cartItems);
-  }, [cartItems]);
 
   useEffect(() => {
     writeStorage(FAVORITES_STORAGE_KEY, favoriteItems);
   }, [favoriteItems]);
 
-  const addToCart = (product: CommerceProduct) => {
-    setCartItems((current) => {
-      const existingItem = current.find((item) => item.id === product.id);
 
-      if (existingItem) {
-        return current.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        );
-      }
-
-      return [...current, { ...product, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCartItems((current) => current.filter((item) => item.id !== productId));
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    setCartItems((current) => {
-      if (quantity <= 0) {
-        return current.filter((item) => item.id !== productId);
-      }
-      return current.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
-      );
-    });
-  };
 
   const toggleFavorite = async (product: CommerceProduct) => {
     const exists = favoriteItems.some((item) => item.id === product.id);
@@ -168,26 +124,16 @@ export function CommerceProvider({
     }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
   const value = useMemo<CommerceContextValue>(
     () => ({
-      cartItems,
       favoriteItems,
-      cartCount: cartItems.reduce((count, item) => count + item.quantity, 0),
       favoriteCount: favoriteItems.length,
-      addToCart,
-      removeFromCart,
-      updateQuantity,
       toggleFavorite,
       isFavorite: (productId: string) =>
         favoriteItems.some((item) => item.id === productId),
       clearFavorites,
-      clearCart,
     }),
-    [cartItems, favoriteItems],
+    [favoriteItems],
   );
 
   return (
