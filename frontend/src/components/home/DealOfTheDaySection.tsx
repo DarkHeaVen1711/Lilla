@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m as motion } from "framer-motion";
-import { Heart } from "lucide-react";
-
+import { Heart, ShoppingBag } from "lucide-react";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
 import type { CommerceProduct } from "@/lib/homepageData";
 
 type DealOfTheDaySectionProps = {
@@ -58,7 +60,9 @@ export function DealOfTheDaySection({
     return () => clearInterval(timer);
   }, [expiresAtUtc]);
 
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const addToCart = useStore((s) => s.addToCart);
+  const withAuthGate = useAuthGate();
 
   return (
     <motion.section
@@ -185,7 +189,20 @@ export function DealOfTheDaySection({
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.02 }}
-                  onClick={() => addToCart(product)}
+                  onClick={() => {
+                    withAuthGate(
+                      "ADD_TO_CART",
+                      { ...product, quantity: 1 },
+                      () => {
+                        addToCart(product);
+                        toast.success("Added to cart!", {
+                          description: product.name,
+                          icon: <ShoppingBag className="w-4 h-4" />,
+                          duration: 2500,
+                        });
+                      }
+                    );
+                  }}
                   className="bg-black text-white px-4 py-2 md:px-[21px] md:py-[8.5px] rounded-[6px] md:rounded-[8px] font-medium text-lg md:text-[26px] leading-[120%] tracking-normal hover:bg-gray-800 transition-colors w-full ml-4 flex items-center justify-center h-auto min-h-[40px] md:min-h-[50px]"
                   
                 >

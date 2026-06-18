@@ -3,6 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
+import { ShoppingBag } from "lucide-react";
 import type { CommerceProduct } from "@/lib/homepageData";
 import imgCart from "@/images/cart.png";
 import imgWishlist from "@/images/wishlist.png";
@@ -20,7 +24,9 @@ const HERO_PRODUCT: CommerceProduct = {
 };
  
 export function HeroProductCard() {
-  const { addToCart, toggleFavorite, isFavorite } = useCommerce();
+  const { toggleFavorite, isFavorite } = useCommerce();
+  const addToCart = useStore((s) => s.addToCart);
+  const withAuthGate = useAuthGate();
   const favorite = isFavorite(HERO_PRODUCT.id);
  
   return (
@@ -40,7 +46,20 @@ export function HeroProductCard() {
           <Image src={imgWishlist} alt="Wishlist" className="w-[18px] h-[18px] object-contain invert" />
         </button>
         <button
-          onClick={() => addToCart(HERO_PRODUCT)}
+          onClick={() => {
+            withAuthGate(
+              "ADD_TO_CART",
+              { ...HERO_PRODUCT, quantity: 1 },
+              () => {
+                addToCart(HERO_PRODUCT);
+                toast.success("Added to cart!", {
+                  description: HERO_PRODUCT.name,
+                  icon: <ShoppingBag className="w-4 h-4" />,
+                  duration: 2500,
+                });
+              }
+            );
+          }}
           aria-label="Add to cart"
           className="w-10 h-10 bg-black/15 rounded-full flex items-center justify-center hover:bg-black/25 transition-colors text-white"
         >
