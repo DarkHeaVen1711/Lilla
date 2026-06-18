@@ -85,7 +85,7 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   });
 
   // Go to homepage
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/");
 
   // Verify that the HeroProductCard add button is visible
   const heroAddButton = page.locator('button[aria-label="Add to cart"]');
@@ -99,7 +99,7 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await expect(cartBadge).toHaveText("1");
 
   // Navigate to Product Detail Page (PDP)
-  await page.goto("/products/lilaa-glowy-cream", { waitUntil: "domcontentloaded" });
+  await page.goto("/products/lilaa-glowy-cream");
 
   // Verify add button on PDP is visible
   const pdpAddButton = page.locator('button:has-text("Add to cart")').first();
