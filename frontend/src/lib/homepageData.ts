@@ -264,7 +264,7 @@ export async function getHomePageData(): Promise<HomePageData> {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   
   // 1. Fetch dynamic homepage elements (banners, categories)
-  let homepageConfig: any = {};
+  let homepageConfig: any = null;
   try {
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/homepage/`, { cache: "no-store" }, 5000);
     if (res.ok) {
@@ -303,12 +303,22 @@ export async function getHomePageData(): Promise<HomePageData> {
   }
 
   try {
+    if (!homepageConfig) {
+      throw new Error("Homepage config not loaded from API");
+    }
     // If the dynamic homepageConfig loaded, map bestSellers
     const bestSellers = (homepageConfig.bestSellers || []).map(mapDjangoProductToFrontend);
     
     return {
-      ...LOCAL_HOME_PAGE_DATA,
-      ...homepageConfig,
+      announcementBarText: homepageConfig.announcementBarText ?? LOCAL_HOME_PAGE_DATA.announcementBarText,
+      navLinks: homepageConfig.navLinks ?? LOCAL_HOME_PAGE_DATA.navLinks,
+      heroSlides: homepageConfig.heroSlides ?? LOCAL_HOME_PAGE_DATA.heroSlides,
+      frame19Categories: homepageConfig.frame19Categories ?? LOCAL_HOME_PAGE_DATA.frame19Categories,
+      skinConcerns: homepageConfig.skinConcerns ?? LOCAL_HOME_PAGE_DATA.skinConcerns,
+      trustBadges: homepageConfig.trustBadges ?? LOCAL_HOME_PAGE_DATA.trustBadges,
+      testimonials: homepageConfig.testimonials ?? LOCAL_HOME_PAGE_DATA.testimonials,
+      latestNews: homepageConfig.latestNews ?? LOCAL_HOME_PAGE_DATA.latestNews,
+      footer: homepageConfig.footer ?? LOCAL_HOME_PAGE_DATA.footer,
       bestSellers,
       dealOfTheDay: {
         title: homepageConfig.dealOfTheDay?.title || "Deal Of The day",

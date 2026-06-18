@@ -37,6 +37,7 @@ export function CreditCardForm() {
   const saveAddress = useStore((s) => s.checkoutForm.saveAddress);
   const clearCart = useStore((s) => s.clearCart);
   const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
+  const placeOrder = useStore((s) => s.placeOrder);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -63,34 +64,7 @@ export function CreditCardForm() {
 
     try {
       // Step 1: Create the Pending Order in Django backend (locks stock & verifies pricing)
-      const orderPayload = {
-        user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
-        shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
-        shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
-        shipping_city: billingAddress.city || "New York",
-        shipping_postal_code: billingAddress.zip || "10001",
-        total_price: orderTotal.toFixed(2),
-        payment_method: "CARD",
-        items: cartItems.map(item => ({
-          product_id: item.id,
-          product_name: item.name,
-          price: item.price.toFixed(2),
-          quantity: item.quantity,
-        })),
-      };
-
-      const orderRes = await apiFetch("/api/orders/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!orderRes.ok) {
-        const errorData = await orderRes.json();
-        throw new Error(errorData.detail || errorData.error || "Failed to create order");
-      }
-
-      const orderData = await orderRes.json();
+      const orderData = await placeOrder("CARD", apiFetch);
       const orderId = orderData.id;
 
       // Step 2: Request Stripe PaymentIntent client_secret

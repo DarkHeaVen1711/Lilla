@@ -6,7 +6,7 @@ import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelect
 import { CreditCardForm } from "@/components/checkout/CreditCardForm";
 import { PaymentSummary } from "@/components/checkout/PaymentSummary";
 import { CheckoutErrorBoundary } from "@/components/checkout/ErrorBoundary";
-import { useStore } from "@/store/useStore";
+import { useStore, type PaymentMethodType } from "@/store/useStore";
 import { apiFetch } from "@/lib/apiClient";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -22,6 +22,7 @@ export default function PaymentPage() {
   const billingAddress = useStore((s) => s.checkoutForm.billingAddress);
   const clearCart = useStore((s) => s.clearCart);
   const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
+  const placeOrder = useStore((s) => s.placeOrder);
   const paymentMethod = useStore((s) => s.checkoutForm.paymentMethod);
   const setPaymentMethod = useStore((s) => s.setPaymentMethod);
   const [loading, setLoading] = useState(false);
@@ -30,34 +31,19 @@ export default function PaymentPage() {
   const methodDisplay = { COD: "Cash On Delivery", CARD: "Credit/Debit Card", NETBANKING: "Net Banking" } as const;
   const displayToType = { "Cash On Delivery": "COD", "Credit/Debit Card": "CARD", "Net Banking": "NETBANKING" } as const;
 
-  const handlePlaceOrder = async (e: React.MouseEvent, method: string) => {
+  const handlePlaceOrder = async (e: React.MouseEvent, method: PaymentMethodType) => {
     e.preventDefault();
     if (cartItems.length === 0) { alert("Your cart is empty"); return; }
     setLoading(true);
     try {
-      const orderPayload = {
-        user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
-        shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
-        shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
-        shipping_city: billingAddress.city || "New York",
-        shipping_postal_code: billingAddress.zip || "10001",
-        total_price: orderTotal.toFixed(2),
-        payment_method: method,
-        items: cartItems.map(item => ({
-          product_id: item.id,
-          product_name: item.name,
-          price: item.price.toFixed(2),
-          quantity: item.quantity,
-        })),
+      const orderData = await placeOrder(method, apiFetch);
+      const orderWithImages = {
+        ...orderData,
+        items: orderData.items?.map((item: Record<string, unknown>) => ({
+          ...item,
+          image: cartItems.find(c => c.id === item.product_id)?.image || null
+        })) ?? []
       };
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-
-      const res = await apiFetch("/api/orders", { method: "POST", headers, body: JSON.stringify(orderPayload) });
-      if (!res.ok) throw new Error(`Failed to place order: ${res.statusText}`);
-
-      const orderData = await res.json();
-      const orderWithImages = { ...orderData, items: orderData.items?.map((item: Record<string, unknown>) => ({ ...item, image: cartItems.find(c => c.id === item.product_id)?.image || null })) ?? [] };
       localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
       clearCart();
       clearCheckoutForm();

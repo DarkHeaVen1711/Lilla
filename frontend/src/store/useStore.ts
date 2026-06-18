@@ -106,6 +106,7 @@ interface LillaStore {
   setPaymentMethod: (method: PaymentMethodType) => void;
   setSaveAddress: (value: boolean) => void;
   clearCheckoutForm: () => void;
+  placeOrder: (paymentMethod: PaymentMethodType, apiFetch: any) => Promise<any>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -301,6 +302,39 @@ export const useStore = create<LillaStore>()(
             saveAddress: false,
           },
         })),
+
+      placeOrder: async (paymentMethod, apiFetch) => {
+        const { cart, checkoutForm } = get();
+        const { billingAddress } = checkoutForm;
+        const orderPayload = {
+          user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
+          shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
+          shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
+          shipping_city: billingAddress.city || "New York",
+          shipping_postal_code: billingAddress.zip || "10001",
+          total_price: cart.orderTotal.toFixed(2),
+          payment_method: paymentMethod,
+          items: cart.items.map(item => ({
+            product_id: item.id,
+            product_name: item.name,
+            price: item.price.toFixed(2),
+            quantity: item.quantity,
+          })),
+        };
+
+        const res = await apiFetch("/api/orders/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderPayload),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || errorData.error || "Failed to create order");
+        }
+
+        return await res.json();
+      },
     }),
     {
       name: "lilla-store",

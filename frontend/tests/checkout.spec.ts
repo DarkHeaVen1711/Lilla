@@ -12,12 +12,12 @@ test("should verify catalogue renders and checkout redirects to login", async ({
 
   // Check catalogue page rendering
   await page.goto("/shop", { waitUntil: "domcontentloaded" });
-  const catalogHeading = page.locator("h1");
+  const catalogHeading = page.locator("h1").first();
   await expect(catalogHeading).toBeVisible();
 
   // Verify cart page loads
   await page.goto("/cart", { waitUntil: "domcontentloaded" });
-  const cartHeading = page.locator("h1");
+  const cartHeading = page.locator("h1").first();
   await expect(cartHeading).toBeVisible();
 
   // Verify checkout server-side middleware redirects to login when unauthenticated
@@ -88,15 +88,17 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await page.goto("/");
 
   // Verify that the HeroProductCard add button is visible
-  const heroAddButton = page.locator('button[aria-label="Add to cart"]');
+  const heroAddButton = page.locator('button[aria-label="Add to cart"]').first();
   await expect(heroAddButton).toBeVisible();
-
-  // Click add to cart
-  await heroAddButton.click();
 
   // Verify the cart badge shows 1
   const cartBadge = page.locator('a[aria-label="Cart"] span');
-  await expect(cartBadge).toHaveText("1");
+
+  // Click add to cart and verify badge updates, retrying to handle hydration delay
+  await expect(async () => {
+    await heroAddButton.click();
+    await expect(cartBadge).toHaveText("1");
+  }).toPass({ timeout: 5000 });
 
   // Navigate to Product Detail Page (PDP)
   await page.goto("/products/lilaa-glowy-cream");
