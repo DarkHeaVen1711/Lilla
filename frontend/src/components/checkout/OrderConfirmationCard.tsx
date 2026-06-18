@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
-import { useCommerce } from "@/components/providers/CommerceProvider";
-
 export function OrderConfirmationCard() {
-  const { cartItems } = useCommerce();
   const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
@@ -20,7 +17,7 @@ export function OrderConfirmationCard() {
     }
   }, []);
 
-  const displayItems = order ? order.items : cartItems;
+  const displayItems = order ? order.items : [];
 
   return (
     <div className="w-full bg-white rounded-2xl p-8 border border-gray-100 shadow-sm font-sans flex flex-col mt-6">
