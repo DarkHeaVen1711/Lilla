@@ -1,3 +1,5 @@
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -15,7 +17,7 @@ const nextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:8000 https://api.stripe.com; frame-src 'self' https://js.stripe.com; frame-ancestors 'none'; object-src 'none';",
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ${API_URL} https://api.stripe.com; frame-src 'self' https://js.stripe.com; frame-ancestors 'none'; object-src 'none';`,
           }
         ],
       },
