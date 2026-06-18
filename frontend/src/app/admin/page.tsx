@@ -3,7 +3,29 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
-import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2, Edit } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  ShoppingCart,
+  Users,
+  Search,
+  Trash2,
+  Edit,
+  DollarSign,
+  TrendingUp
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar
+} from "recharts";
 
 export default function AdminDashboard() {
   const user = useStore((s) => s.user);
@@ -13,6 +35,10 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -30,15 +56,26 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
+      setIsLoadingAnalytics(true);
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      
       const prodRes = await fetch(`${apiBase}/api/products/`);
-      setProducts(await prodRes.json());
-      const orderRes = await fetch(`${apiBase}/api/orders/`);
-      setOrders(await orderRes.json());
-      const userRes = await fetch(`${apiBase}/api/admin/users/`);
-      setUsers(await userRes.json());
+      if (prodRes.ok) setProducts(await prodRes.json());
+      
+      const orderRes = await fetch("/api/orders/");
+      if (orderRes.ok) setOrders(await orderRes.json());
+      
+      const userRes = await fetch("/api/admin/users/");
+      if (userRes.ok) setUsers(await userRes.json());
+
+      const analyticsRes = await fetch("/api/admin/analytics/");
+      if (analyticsRes.ok) {
+        setAnalytics(await analyticsRes.json());
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
+    } finally {
+      setIsLoadingAnalytics(false);
     }
   };
 
@@ -113,6 +150,10 @@ export default function AdminDashboard() {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!user || !user.isStaff) {
