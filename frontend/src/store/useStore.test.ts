@@ -51,4 +51,33 @@ describe("Lilla Store unit tests", () => {
     expect(state.cart.items).toHaveLength(1);
     expect(state.cart.items[0].id).toBe("3");
   });
+
+  it("should handle cart actions (addToCart, removeFromCart, updateQuantity) correctly", () => {
+    const { addToCart, removeFromCart, updateQuantity } = useStore.getState();
+
+    addToCart({ id: "1", name: "Product 1", slug: "p1", price: 20, image: "" });
+    let state = useStore.getState();
+    expect(state.cart.items).toHaveLength(1);
+    expect(state.cart.items[0].quantity).toBe(1);
+
+    addToCart({ id: "1", name: "Product 1", slug: "p1", price: 20, image: "" });
+    state = useStore.getState();
+    expect(state.cart.items).toHaveLength(1);
+    expect(state.cart.items[0].quantity).toBe(2);
+
+    updateQuantity("1", 5);
+    state = useStore.getState();
+    expect(state.cart.items[0].quantity).toBe(5);
+
+    updateQuantity("1", 0);
+    state = useStore.getState();
+    expect(state.cart.items).toHaveLength(0);
+
+    addToCart({ id: "2", name: "Product 2", slug: "p2", price: 30, image: "" });
+    state = useStore.getState();
+    expect(state.cart.items).toHaveLength(1);
+    removeFromCart("2");
+    state = useStore.getState();
+    expect(state.cart.items).toHaveLength(0);
+  });
 });
