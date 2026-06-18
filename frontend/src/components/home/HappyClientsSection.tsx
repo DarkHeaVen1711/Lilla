@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Star, ShoppingBag } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
-import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
+import { useAuthGate } from "@/lib/authGate";
+import { toast } from "sonner";
 import type { Testimonial, CommerceProduct } from "@/lib/homepageData";
 import happyClientsDeco from "@/images/happy_clients_Deco.png";
 
@@ -15,7 +17,8 @@ type HappyClientsSectionProps = {
 };
 
 export function HappyClientsSection({ testimonials, products }: HappyClientsSectionProps) {
-  const { addToCart } = useCommerce();
+  const addToCart = useStore((s) => s.addToCart);
+  const withAuthGate = useAuthGate();
 
   if (!testimonials || testimonials.length === 0) return null;
 
@@ -115,7 +118,20 @@ export function HappyClientsSection({ testimonials, products }: HappyClientsSect
                         </h4>
                       </Link>
                       <button 
-                        onClick={() => addToCart(linkedProduct)}
+                        onClick={() => {
+                          withAuthGate(
+                            "ADD_TO_CART",
+                            { ...linkedProduct, quantity: 1 },
+                            () => {
+                              addToCart(linkedProduct);
+                              toast.success("Added to cart!", {
+                                description: linkedProduct.name,
+                                icon: <ShoppingBag className="w-4 h-4" />,
+                                duration: 2500,
+                              });
+                            }
+                          );
+                        }}
                         className="text-brand-primary text-[13px] font-medium hover:underline decoration-brand-primary/30 underline-offset-2 text-left mt-1"
                       >
                         Shop now
