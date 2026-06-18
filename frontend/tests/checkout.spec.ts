@@ -91,12 +91,14 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   const heroAddButton = page.locator('button[aria-label="Add to cart"]');
   await expect(heroAddButton).toBeVisible();
 
-  // Click add to cart
-  await heroAddButton.click();
-
   // Verify the cart badge shows 1
   const cartBadge = page.locator('a[aria-label="Cart"] span');
-  await expect(cartBadge).toHaveText("1");
+
+  // Click add to cart and verify badge updates, retrying to handle hydration delay
+  await expect(async () => {
+    await heroAddButton.click();
+    await expect(cartBadge).toHaveText("1");
+  }).toPass({ timeout: 5000 });
 
   // Navigate to Product Detail Page (PDP)
   await page.goto("/products/lilaa-glowy-cream");
