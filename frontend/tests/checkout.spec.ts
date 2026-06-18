@@ -106,7 +106,13 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
 
   // Increase quantity to 2
   const plusButton = page.locator('button[aria-label="Increase quantity"]');
-  await plusButton.click();
+  const quantityValue = page.locator('span.w-10.text-center.font-extrabold');
+  
+  // Retrying click to ensure React hydration has finished and input updates
+  await expect(async () => {
+    await plusButton.click();
+    await expect(quantityValue).toHaveText("2");
+  }).toPass({ timeout: 5000 });
 
   // Click add to cart on PDP
   await pdpAddButton.click();
