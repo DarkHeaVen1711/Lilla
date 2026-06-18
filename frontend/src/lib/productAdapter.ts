@@ -107,6 +107,10 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
 
 export async function getProducts(options?: {
   categorySlug?: string;
+  categories?: string[];
+  concerns?: string[];
+  ingredients?: string[];
+  sort?: string;
   limit?: number;
   featured?: boolean;
 }): Promise<FrontendProduct[]> {
@@ -114,6 +118,18 @@ export async function getProducts(options?: {
     const url = new URL(`${API_BASE_URL}/api/products/`);
     if (options?.categorySlug) {
       url.searchParams.append("category", options.categorySlug);
+    }
+    if (options?.categories && options.categories.length > 0) {
+      options.categories.forEach((c) => url.searchParams.append("category", c));
+    }
+    if (options?.concerns && options.concerns.length > 0) {
+      options.concerns.forEach((c) => url.searchParams.append("concern", c));
+    }
+    if (options?.ingredients && options.ingredients.length > 0) {
+      options.ingredients.forEach((i) => url.searchParams.append("ingredient", i));
+    }
+    if (options?.sort) {
+      url.searchParams.append("sort", options.sort);
     }
     if (options?.featured !== undefined) {
       url.searchParams.append("featured", options.featured ? "true" : "false");

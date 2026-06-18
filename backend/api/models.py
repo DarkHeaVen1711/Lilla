@@ -53,6 +53,9 @@ class Product(models.Model):
     # Inventory stock
     stock = models.PositiveIntegerField(default=100)
 
+    # Timestamp for newest sort
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, blank=True, null=True)
+
     def __str__(self):
         return self.name
 
