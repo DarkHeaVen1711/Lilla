@@ -105,7 +105,7 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await expect(pdpAddButton).toBeVisible();
 
   // Increase quantity to 2
-  const plusButton = page.locator('button:has(svg.lucide-plus)');
+  const plusButton = page.locator('button[aria-label="Increase quantity"]');
   await plusButton.click();
 
   // Click add to cart on PDP

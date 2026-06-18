@@ -427,6 +427,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                 <div className="flex items-center border border-gray-200 rounded-full h-[56px] px-2 bg-gray-50/50">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Decrease quantity"
                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black rounded-full hover:bg-white transition-colors"
                   >
                     <Minus className="w-4 h-4" />
@@ -434,6 +435,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                   <span className="w-10 text-center font-extrabold text-2xl">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
+                    aria-label="Increase quantity"
                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black rounded-full hover:bg-white transition-colors"
                   >
                     <Plus className="w-4 h-4" />
