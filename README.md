@@ -52,6 +52,13 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Reduced Motion Support**: Detects system preferences (`prefers-reduced-motion: reduce`) and automatically disables or minimizes Framer Motion transitions/animations to prevent vestibular triggers.
 - **Keyboard-Focus and Dialog Semantics**: Fully accessibility-hardened `AuthModal` overlay implementing focus traps, auto-focus return, Escape-key dismissals, and appropriate ARIA attributes.
 
+### 10. Automated Order Confirmation Invoices
+- **Status-Triggered Delivery**: Automatically hooks to Order model status transitions. Dispatches order confirmation invoices when status changes to `"Paid"` via database save or Stripe webhooks.
+- **Asynchronous Mailer Engine**: Sends multi-alternative emails (HTML template + plain-text fallback) inside background daemon threads to maximize response speed and ensure zero HTTP thread blocking.
+- **Advanced Deduplication Defense**: Overrides Django's `Order.save()` to track in-memory original status, ensuring that duplicate or repeated saves on the same in-memory instance do not trigger multiple duplicate invoice emails.
+- **Valid Email Gating**: Intercepts and filters checkouts, skipping delivery for phone-only checkouts that do not have a valid email address containing an `@` character.
+- **Responsive Rose-Gold HTML Template**: Incorporates an inline-styled aesthetic layout mirroring LILLA's minimalist premium experience, displaying line items, discounts, delivery fees, and grand totals.
+
 ---
 
 ## 💻 Tech Stack
@@ -90,6 +97,7 @@ Lilla/
 │       ├── test_integration.py      # Concurrency & OTP lifecycle test suites
 │       ├── test_admin.py            # Administrative permissions & stock adjustment logs tests
 │       ├── test_account.py          # Favorites sync & address default toggle tests
+│       ├── test_invoices.py         # Order transition paid signal & synchronous outbox tests
 │       └── signals.py               # Asynchronous Next.js ISR revalidation hooks
 │
 └── frontend/                        # Next.js Storefront App
@@ -181,7 +189,22 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 
 ## 🧪 Running Validation Tests
 
-To execute the entire backend testing suite (including concurrency, stock locks, and OTP lifecycle tests) using the isolated `LocMemCache` wrapper, run:
+### 1. Backend Integration & Unit Tests
+To execute the entire backend testing suite (including concurrency, stock locks, OTP lifecycle, and invoice paid-transition tests) using the isolated cache wrapper:
 ```bash
 python backend/manage.py test api
+```
+
+### 2. Frontend Unit Tests (Vitest)
+To execute the frontend unit test suite for the persisted state machine and checkout discount actions:
+```bash
+cd frontend
+npm run test:unit
+```
+
+### 3. End-to-End Tests (Playwright)
+To run end-to-end user checkout flows against a running Next.js instance:
+```bash
+cd frontend
+npm run test:e2e
 ```
