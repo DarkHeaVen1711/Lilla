@@ -169,10 +169,21 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
         )}
       </div>
 
-      {/* Products Grid */}
-      {filteredProducts.length > 0 ? (
+      {/* Products Grid / Skeletons */}
+      {loading ? (
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProducts.map((product) => (
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="flex flex-col gap-4 border border-gray-100 rounded-3xl p-5 animate-pulse bg-white">
+              <div className="aspect-square w-full rounded-2xl bg-gray-100"></div>
+              <div className="h-4 w-1/3 bg-gray-100 rounded-full mt-2"></div>
+              <div className="h-6 w-3/4 bg-gray-100 rounded-full"></div>
+              <div className="h-5 w-1/2 bg-gray-100 rounded-full"></div>
+            </div>
+          ))}
+        </div>
+      ) : products.length > 0 ? (
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {products.map((product) => (
             <CatalogCard key={product.id} product={product} />
           ))}
         </div>
@@ -180,16 +191,19 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
         <div className="py-24 text-center bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 max-w-[640px] mx-auto w-full px-6 flex flex-col items-center justify-center">
           <p className="text-xl font-bold text-gray-500 mb-2">No matching products found</p>
           <p className="text-gray-400 text-base font-medium mb-6">
-            We couldn't find anything matching your query. Try searching for "serum", "mask", "cream", or reset your filters.
+            We couldn't find anything matching your filters or query. Try refining your selection.
           </p>
           <button
             onClick={() => {
               setSearchQuery("");
-              setActiveCategory("all");
+              setSelectedCategories([]);
+              setSelectedConcerns([]);
+              setSelectedIngredients([]);
+              setActiveSort("");
             }}
             className="bg-black text-white px-6 py-3 rounded-full text-base font-bold hover:bg-gray-800 transition-colors shadow-sm"
           >
-            Clear Filters
+            Reset All Filters
           </button>
         </div>
       )}
