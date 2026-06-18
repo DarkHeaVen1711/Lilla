@@ -257,6 +257,91 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Categories Section */}
+              <div className="space-y-3">
+                <h4 className="text-base font-extrabold uppercase tracking-wider text-gray-400">Categories</h4>
+                <div className="flex flex-col gap-2.5">
+                  {allCategories.map((cat) => {
+                    const isChecked = selectedCategories.includes(cat.slug);
+                    return (
+                      <label key={cat.slug} className="flex items-center gap-3 cursor-pointer text-base font-semibold select-none text-black">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedCategories(selectedCategories.filter((slug) => slug !== cat.slug));
+                            } else {
+                              setSelectedCategories([...selectedCategories, cat.slug]);
+                            }
+                          }}
+                          className="w-4.5 h-4.5 accent-black rounded border-gray-300"
+                        />
+                        <span className={isChecked ? "font-black" : "text-gray-600"}>{cat.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Skin Concerns Section */}
+              {allConcerns.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-base font-extrabold uppercase tracking-wider text-gray-400">Skin Concerns</h4>
+                  <div className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto pr-2 scrollbar-thin">
+                    {allConcerns.map((concern) => {
+                      const isChecked = selectedConcerns.includes(concern);
+                      return (
+                        <label key={concern} className="flex items-center gap-3 cursor-pointer text-base font-semibold select-none text-black">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSelectedConcerns(selectedConcerns.filter((c) => c !== concern));
+                              } else {
+                                setSelectedConcerns([...selectedConcerns, concern]);
+                              }
+                            }}
+                            className="w-4.5 h-4.5 accent-black rounded border-gray-300"
+                          />
+                          <span className={isChecked ? "font-black" : "text-gray-600"}>{concern}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Key Ingredients Section */}
+              {allIngredients.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-base font-extrabold uppercase tracking-wider text-gray-400">Ingredients</h4>
+                  <div className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto pr-2 scrollbar-thin">
+                    {allIngredients.map((ing) => {
+                      const isChecked = selectedIngredients.includes(ing);
+                      return (
+                        <label key={ing} className="flex items-center gap-3 cursor-pointer text-base font-semibold select-none text-black">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSelectedIngredients(selectedIngredients.filter((i) => i !== ing));
+                              } else {
+                                setSelectedIngredients([...selectedIngredients, ing]);
+                              }
+                            }}
+                            className="w-4.5 h-4.5 accent-black rounded border-gray-300"
+                          />
+                          <span className={isChecked ? "font-black" : "text-gray-600"}>{ing}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Drawer Footer Actions */}
