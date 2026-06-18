@@ -881,36 +881,89 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               </div>
             </div>
 
-            {/* Individual Review Row Components */}
-            <div className="flex flex-col gap-6 divide-y divide-gray-100">
-              {reviews.map((rev) => (
-                <div key={rev.id} className="pt-6 first:pt-0 flex gap-4">
-                  {/* Reviewer Avatar */}
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200">
-                    <Image src={rev.avatar} alt={rev.author} fill className="object-cover" />
-                  </div>
-                  {/* Review Body */}
-                  <div className="flex-1 flex flex-col gap-2 font-medium text-base">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-black text-xl leading-tight mb-1">{rev.author}</h4>
-                        <div className="flex items-center text-yellow-500 gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3.5 h-3.5 ${i < rev.rating ? "fill-current" : "text-gray-200"}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-sm">{rev.date}</span>
-                    </div>
-                    <p className="text-gray-600 leading-relaxed text-lg md:text-xl pr-4">
-                      "{rev.content}"
-                    </p>
+            {/* Review Submission Form */}
+            {user ? (
+              <div className="bg-brand-bg-gray p-6 rounded-[24px] border border-gray-100 mb-8">
+                <h3 className="text-2xl font-bold mb-4 font-serif">Write a Review</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="font-semibold text-lg">Rating:</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setNewRating(star)}
+                        className="text-yellow-500 transition-transform hover:scale-110"
+                      >
+                        <Star className={`w-6 h-6 ${star <= newRating ? "fill-current" : ""}`} />
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Share your thoughts about this product..."
+                  className="w-full min-h-[100px] p-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-black text-black font-semibold text-base mb-4 resize-none"
+                />
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={isSubmittingReview}
+                  className="px-6 h-[44px] bg-black text-white rounded-full font-bold text-sm hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                >
+                  {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-8 text-center">
+                <p className="text-gray-500 font-semibold text-base mb-3 font-sans">Only logged in customers can leave a review.</p>
+                <button
+                  onClick={() => {
+                    useStore.getState().openAuthModal("PHONE_INPUT");
+                  }}
+                  className="bg-black text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-800 transition-colors"
+                >
+                  Log In / Sign Up
+                </button>
+              </div>
+            )}
+
+            {/* Individual Review Row Components */}
+            <div className="flex flex-col gap-6 divide-y divide-gray-100">
+              {reviewsList.length === 0 ? (
+                <p className="text-gray-500 font-semibold italic text-lg py-4">No reviews yet. Be the first to review this product!</p>
+              ) : (
+                reviewsList.map((rev) => (
+                  <div key={rev.id} className="pt-6 first:pt-0 flex gap-4">
+                    {/* Reviewer Initials Avatar */}
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-700 font-bold shrink-0 text-lg uppercase">
+                      {rev.user_name ? rev.user_name[0] : "U"}
+                    </div>
+                    {/* Review Body */}
+                    <div className="flex-1 flex flex-col gap-2 font-medium text-base">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-black text-xl leading-tight mb-1">{rev.user_name}</h4>
+                          <div className="flex items-center text-yellow-500 gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${i < rev.rating ? "fill-current" : "text-gray-200"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-gray-400 text-sm">
+                          {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : ""}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed text-lg md:text-xl pr-4">
+                        "{rev.comment}"
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
           </div>
