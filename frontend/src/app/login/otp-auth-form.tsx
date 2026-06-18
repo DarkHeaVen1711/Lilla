@@ -5,16 +5,27 @@ import Image from "next/image";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { Loader2, Edit3 } from "lucide-react";
 import logo from "@/images/logo.png";
-import { useStore } from "@/store/useStore";
+import { useOtpAuthFlow } from "@/hooks/useOtpAuthFlow";
 
 export function OtpAuthForm() {
-  const loginUser = useStore((s) => s.loginUser);
-  const [step, setStep] = useState<"input" | "otp">("input");
-  const [authMethod, setAuthMethod] = useState<string>("");
-  const [countryCode, setCountryCode] = useState("+1");
-  const [agreed, setAgreed] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    step,
+    setStep,
+    authMethod,
+    setAuthMethod,
+    countryCode,
+    setCountryCode,
+    agreed,
+    setAgreed,
+    otp,
+    setOtp,
+    isLoading,
+    error,
+    hasPhoneFormat,
+    isValid,
+    handleSendOtp,
+    handleVerifyOtp,
+  } = useOtpAuthFlow();
   
   const otpRefs = [
     useRef<HTMLInputElement>(null),
@@ -24,82 +35,6 @@ export function OtpAuthForm() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null)
   ];
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!authMethod || !agreed) return;
-    
-    setIsLoading(true);
-    try {
-      const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE_URL}/api/auth/request-otp/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ identity: finalAuth }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.detail || errorData.error || "Failed to send OTP code.");
-        return;
-      }
-      setStep("otp");
-    } catch (err) {
-      console.error("Auth send OTP error:", err);
-      alert("Error contacting the auth server. Please check if your backend is running.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = otp.join("");
-    if (code.length !== 6) return;
-
-    setIsLoading(true);
-    try {
-      const finalAuth = hasPhoneFormat ? `${countryCode}${authMethod.replace(/^\+/, "")}` : authMethod;
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ identity: finalAuth, otp: code }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.detail || errorData.error || "Invalid verification code.");
-        return;
-      }
-      const data = await res.json();
-      
-      // Save tokens in secure HTTP-only cookies
-      const cookieRes = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ access: data.access, refresh: data.refresh }),
-      });
-      
-      if (!cookieRes.ok) {
-        throw new Error("Failed to initialize secure session cookies.");
-      }
-
-      localStorage.setItem("lilla-user", JSON.stringify(data.user));
-      loginUser(finalAuth, !!data.user?.is_staff);
-      window.location.href = "/";
-    } catch (err: any) {
-      console.error("Auth verify OTP error:", err);
-      alert(err.message || "Error verifying OTP code.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
@@ -131,9 +66,6 @@ export function OtpAuthForm() {
       otpRefs[index - 1].current?.focus();
     }
   };
-
-  const isNumeric = (str: string) => /^\d+$/.test(str.replace(/[\s\-\+]/g, ""));
-  const hasPhoneFormat = isNumeric(authMethod) && authMethod.length > 0;
 
   return (
     <div className="w-full font-sans">
@@ -221,10 +153,16 @@ export function OtpAuthForm() {
                 </span>
               </label>
 
+              {error && (
+                <div className="text-red-600 text-[14px] mt-2 font-medium">
+                  {error}
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={!authMethod || !agreed || isLoading}
+                disabled={!isValid || isLoading}
                 className="mt-6 w-full h-[52px] flex items-center justify-center text-white text-[16px] font-semibold transition-colors disabled:bg-brand-disabled-gray disabled:cursor-not-allowed bg-black hover:bg-gray-800"
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send OTP"}
@@ -254,7 +192,7 @@ export function OtpAuthForm() {
               </button>
             </div>
 
-            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6">
+            <form onSubmit={(e) => handleVerifyOtp(e, () => { window.location.href = "/"; })} className="flex flex-col gap-6">
               <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-start">
                 {otp.map((digit, i) => (
                   <input
@@ -274,6 +212,12 @@ export function OtpAuthForm() {
               <button type="button" className="text-left text-gray-500 hover:text-black text-[15px] transition-colors w-fit">
                 Resend OTP
               </button>
+
+              {error && (
+                <div className="text-red-600 text-[14px] font-medium">
+                  {error}
+                </div>
+              )}
 
               <button
                 type="submit"
