@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { X, Edit3, Loader2, Phone, Mail } from "lucide-react";
 import { useStore } from "@/store/useStore";
@@ -84,6 +84,56 @@ export function AuthModal() {
 
   const isEmailMode = inputMode === "email";
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (authModal.isOpen) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
+    } else if (previousActiveElement.current) {
+      previousActiveElement.current.focus();
+      previousActiveElement.current = null;
+    }
+  }, [authModal.isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+
+      if (e.key === "Tab" && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0] as HTMLElement;
+        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    if (authModal.isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [authModal.isOpen]);
+
+
   // ── Close & Reset ────────────────────────────────────────────────────────
   const handleClose = () => {
     closeAuthModal();
@@ -152,7 +202,11 @@ export function AuthModal() {
         onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       >
         <motion.div
+          ref={modalRef}
           key="auth-modal-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -183,7 +237,7 @@ export function AuthModal() {
                   exit={{ opacity: 0, x: 24 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <h2 className="font-serif text-2xl text-black mb-1">Log In or Sign Up</h2>
+                  <h2 id="auth-modal-title" className="font-serif text-2xl text-black mb-1">Log In or Sign Up</h2>
                   <p className="text-gray-500 text-sm mb-6">
                     Enter your {isEmailMode ? "email" : "phone number"} to receive a one-time code.
                   </p>
@@ -294,7 +348,7 @@ export function AuthModal() {
                   exit={{ opacity: 0, x: -24 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <h2 className="font-serif text-2xl text-black mb-1">OTP Verification</h2>
+                  <h2 id="auth-modal-title" className="font-serif text-2xl text-black mb-1">OTP Verification</h2>
 
                   {/* Back / Edit button */}
                   <div className="flex items-center gap-2 mb-6">
