@@ -242,12 +242,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
       "ADD_TO_CART",
       { ...product, quantity },
       () => {
-        const existing = cartItems.find((item) => item.id === product.id);
-        const targetQty = (existing?.quantity || 0) + quantity;
-        addToCart(product as any);
-        if (targetQty > 1) {
-          updateQuantity(product.id, targetQty);
-        }
+        addToCart(product as any, quantity);
         toast.success("Added to cart!", {
           description: `${product.name} (Qty: ${quantity})`,
           icon: <ShoppingBag className="w-4 h-4" />,
