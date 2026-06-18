@@ -1,7 +1,7 @@
 import logging
 from django.db import transaction
 from rest_framework import serializers
-from .models import Category, Product, Order, OrderItem, Combo, Favorite, Address
+from .models import Category, Product, Order, OrderItem, Combo, Favorite, Address, Review
 
 transaction_logger = logging.getLogger('lilla.transaction')
 
@@ -227,3 +227,32 @@ class AddressSerializer(serializers.ModelSerializer):
         model = Address
         fields = ['id', 'first_name', 'last_name', 'email', 'country', 'address', 'state', 'city', 'zip', 'phone', 'is_default', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user_name', 'rating', 'comment', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']
+
+    def validate_rating(self, value):
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("Rating must be an integer between 1 and 5.")
+        return value
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        product = self.context.get('product')
+        user = request.user
+        
+        if Review.objects.filter(product=product, user=user).exists():
+            raise serializers.ValidationError("You have already reviewed this product.")
+        return attrs

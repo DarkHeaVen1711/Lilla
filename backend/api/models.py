@@ -169,3 +169,36 @@ class Address(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.address}"
 
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="product_reviews")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_reviews")
+    rating = models.PositiveIntegerField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('product', 'user')
+
+    def __str__(self):
+        return f"Review for {self.product.name} by {self.user.username} ({self.rating} stars)"
+
+
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import Avg
+
+@receiver(post_save, sender=Review)
+@receiver(post_delete, sender=Review)
+def update_product_rating_metrics(sender, instance, **kwargs):
+    product = instance.product
+    reviews_qs = product.product_reviews.all()
+    count = reviews_qs.count()
+    if count > 0:
+        avg_rating = reviews_qs.aggregate(Avg('rating'))['rating__avg']
+        product.rating = round(avg_rating, 2)
+    else:
+        product.rating = 4.80
+    product.reviews = count
+    product.save()
+

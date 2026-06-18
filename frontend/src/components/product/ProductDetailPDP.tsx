@@ -50,6 +50,86 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const addToCart = useStore((s) => s.addToCart);
   const updateQuantity = useStore((s) => s.updateQuantity);
   const withAuthGate = useAuthGate();
+
+  const user = useStore((s) => s.user);
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [ratingVal, setRatingVal] = useState<number>(Number(initialProduct.rating) || 4.8);
+  const [reviewsCount, setReviewsCount] = useState<number>(Number(initialProduct.reviews) || 0);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch(`/api/products/${initialProduct.slug}/reviews/`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviewsList(data);
+        if (data.length > 0) {
+          const totalRating = data.reduce((sum: number, r: any) => sum + r.rating, 0);
+          setRatingVal(totalRating / data.length);
+          setReviewsCount(data.length);
+        } else {
+          setRatingVal(4.8);
+          setReviewsCount(0);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, [initialProduct.slug]);
+
+  const handleSubmitReview = async () => {
+    if (!newComment.trim()) {
+      toast.error("Please enter a comment.");
+      return;
+    }
+    setIsSubmittingReview(true);
+    try {
+      const res = await fetch(`/api/products/${initialProduct.slug}/reviews/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: newRating, comment: newComment }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Review submitted successfully!");
+        setNewComment("");
+        setNewRating(5);
+        fetchReviews();
+      } else {
+        const errorMsg = data.non_field_errors?.[0] || data.detail || data.message || "Failed to submit review.";
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      toast.error("Failed to submit review.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const starDistribution = useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviewsList.forEach((r) => {
+      const rating = Math.round(r.rating) as 1 | 2 | 3 | 4 | 5;
+      if (rating >= 1 && rating <= 5) {
+        counts[rating]++;
+      }
+    });
+    const total = reviewsList.length || 1;
+    return [
+      { star: 5, weight: `${Math.round((counts[5] / total) * 100)}%` },
+      { star: 4, weight: `${Math.round((counts[4] / total) * 100)}%` },
+      { star: 3, weight: `${Math.round((counts[3] / total) * 100)}%` },
+      { star: 2, weight: `${Math.round((counts[2] / total) * 100)}%` },
+      { star: 1, weight: `${Math.round((counts[1] / total) * 100)}%` },
+    ];
+  }, [reviewsList]);
   
   // Reconstruct OOP class instance from plain serialized props
   const product = useMemo(() => {
@@ -352,10 +432,10 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               <div className="flex items-center gap-2 bg-brand-bg-gray border border-gray-100 px-4 py-2 rounded-full shadow-sm">
                 <div className="flex items-center text-yellow-500">
                   <Star className="w-5 h-5 fill-current" />
-                  <span className="text-lg md:text-xl font-bold text-black ml-1">{(product.rating || 4.8).toFixed(1)}</span>
+                  <span className="text-lg md:text-xl font-bold text-black ml-1">{ratingVal.toFixed(1)}</span>
                 </div>
                 <span className="text-gray-300">|</span>
-                <span className="text-base font-semibold text-gray-500">{product.reviews || 108} Ratings</span>
+                <span className="text-base font-semibold text-gray-500">{reviewsCount} Ratings</span>
               </div>
             </div>
 
@@ -749,26 +829,20 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
           {/* Left Block: Aggregated Metrics Matrix */}
           <div className="flex flex-col gap-8 bg-brand-bg-gray p-8 rounded-[32px] border border-gray-100 shadow-sm">
             <div className="flex items-center gap-6">
-              <span className="text-7xl font-bold font-serif leading-none">{(product.rating || 4.8).toFixed(1)}</span>
+              <span className="text-7xl font-bold font-serif leading-none">{ratingVal.toFixed(1)}</span>
               <div className="flex flex-col">
                 <div className="flex items-center text-yellow-500 gap-1 mb-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-current" />
+                    <Star key={i} className={`w-5 h-5 ${i < Math.round(ratingVal) ? "fill-current" : "text-gray-200"}`} />
                   ))}
                 </div>
-                <span className="text-base font-semibold text-gray-500">{product.reviews || 108} Ratings</span>
+                <span className="text-base font-semibold text-gray-500">{reviewsCount} Ratings</span>
               </div>
             </div>
 
             {/* Star Distribution Rows */}
             <div className="flex flex-col gap-3 font-semibold text-base">
-              {[
-                { star: 5, weight: "82%" },
-                { star: 4, weight: "12%" },
-                { star: 3, weight: "4%" },
-                { star: 2, weight: "2%" },
-                { star: 1, weight: "0%" },
-              ].map((row) => (
+              {starDistribution.map((row) => (
                 <div key={row.star} className="flex items-center gap-4">
                   <span className="w-3 text-right">{row.star}</span>
                   <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500 shrink-0" />
@@ -807,36 +881,89 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               </div>
             </div>
 
-            {/* Individual Review Row Components */}
-            <div className="flex flex-col gap-6 divide-y divide-gray-100">
-              {reviews.map((rev) => (
-                <div key={rev.id} className="pt-6 first:pt-0 flex gap-4">
-                  {/* Reviewer Avatar */}
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200">
-                    <Image src={rev.avatar} alt={rev.author} fill className="object-cover" />
-                  </div>
-                  {/* Review Body */}
-                  <div className="flex-1 flex flex-col gap-2 font-medium text-base">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-black text-xl leading-tight mb-1">{rev.author}</h4>
-                        <div className="flex items-center text-yellow-500 gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3.5 h-3.5 ${i < rev.rating ? "fill-current" : "text-gray-200"}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-sm">{rev.date}</span>
-                    </div>
-                    <p className="text-gray-600 leading-relaxed text-lg md:text-xl pr-4">
-                      "{rev.content}"
-                    </p>
+            {/* Review Submission Form */}
+            {user ? (
+              <div className="bg-brand-bg-gray p-6 rounded-[24px] border border-gray-100 mb-8">
+                <h3 className="text-2xl font-bold mb-4 font-serif">Write a Review</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="font-semibold text-lg">Rating:</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setNewRating(star)}
+                        className="text-yellow-500 transition-transform hover:scale-110"
+                      >
+                        <Star className={`w-6 h-6 ${star <= newRating ? "fill-current" : ""}`} />
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Share your thoughts about this product..."
+                  className="w-full min-h-[100px] p-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-black text-black font-semibold text-base mb-4 resize-none"
+                />
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={isSubmittingReview}
+                  className="px-6 h-[44px] bg-black text-white rounded-full font-bold text-sm hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                >
+                  {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-8 text-center">
+                <p className="text-gray-500 font-semibold text-base mb-3 font-sans">Only logged in customers can leave a review.</p>
+                <button
+                  onClick={() => {
+                    useStore.getState().openAuthModal("PHONE_INPUT");
+                  }}
+                  className="bg-black text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-800 transition-colors"
+                >
+                  Log In / Sign Up
+                </button>
+              </div>
+            )}
+
+            {/* Individual Review Row Components */}
+            <div className="flex flex-col gap-6 divide-y divide-gray-100">
+              {reviewsList.length === 0 ? (
+                <p className="text-gray-500 font-semibold italic text-lg py-4">No reviews yet. Be the first to review this product!</p>
+              ) : (
+                reviewsList.map((rev) => (
+                  <div key={rev.id} className="pt-6 first:pt-0 flex gap-4">
+                    {/* Reviewer Initials Avatar */}
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-700 font-bold shrink-0 text-lg uppercase">
+                      {rev.user_name ? rev.user_name[0] : "U"}
+                    </div>
+                    {/* Review Body */}
+                    <div className="flex-1 flex flex-col gap-2 font-medium text-base">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-black text-xl leading-tight mb-1">{rev.user_name}</h4>
+                          <div className="flex items-center text-yellow-500 gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${i < rev.rating ? "fill-current" : "text-gray-200"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-gray-400 text-sm">
+                          {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : ""}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed text-lg md:text-xl pr-4">
+                        "{rev.comment}"
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
           </div>

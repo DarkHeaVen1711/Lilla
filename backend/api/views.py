@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.conf import settings
 from rest_framework import viewsets, status, generics
+from rest_framework.decorators import action
 import secrets
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -15,11 +16,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address, Coupon
+from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address, Coupon, Review
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
-    OTPRequestSerializer, OTPVerifySerializer, FavoriteSerializer, AddressSerializer
+    OTPRequestSerializer, OTPVerifySerializer, FavoriteSerializer, AddressSerializer,
+    ReviewSerializer, ReviewCreateSerializer
 )
 from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
@@ -43,6 +45,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'reviews':
+            from rest_framework.permissions import AllowAny
+            return [AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').all()
@@ -85,6 +93,30 @@ class ProductViewSet(viewsets.ModelViewSet):
                 new_stock=new_stock,
                 reason="API Manual Edit via Admin Dashboard"
             )
+
+    @action(detail=True, methods=['get', 'post'], url_path='reviews')
+    def reviews(self, request, slug=None):
+        product = self.get_object()
+        if request.method == 'GET':
+            reviews = product.product_reviews.all().order_by('-created_at')
+            serializer = ReviewSerializer(reviews, many=True)
+            return Response(serializer.data)
+            
+        elif request.method == 'POST':
+            if not request.user.is_authenticated:
+                return Response(
+                    {"detail": "Authentication credentials were not provided."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            serializer = ReviewCreateSerializer(
+                data=request.data,
+                context={'request': request, 'product': product}
+            )
+            if serializer.is_valid():
+                serializer.save(user=request.user, product=product)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class HomepageDataView(APIView):
