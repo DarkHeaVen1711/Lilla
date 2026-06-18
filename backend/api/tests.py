@@ -6,7 +6,7 @@ from django.test import override_settings
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
-from api.models import Category, Product, Combo, Order
+from api.models import Category, Product, Combo, Order, Coupon
 from unittest.mock import patch, MagicMock
 
 class CatalogAPITests(APITestCase):
@@ -317,6 +317,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             stock=5,
             is_active=True
         )
+        self.coupon = Coupon.objects.create(code="TRYBEAUTY", discount_percentage=20.00, is_active=True)
         self.url = reverse('order-create')
 
     def test_successful_order_deducts_stock(self):
@@ -327,6 +328,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             "shipping_city": "Test City",
             "shipping_postal_code": "12345",
             "total_price": "23.00",
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "test-stock-prod",
@@ -352,6 +354,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             "shipping_city": "Test City",
             "shipping_postal_code": "12345",
             "total_price": "63.00",
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "test-stock-prod",
