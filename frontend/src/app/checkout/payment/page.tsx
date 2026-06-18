@@ -5,6 +5,7 @@ import { CheckoutBreadcrumbs } from "@/components/checkout/CheckoutBreadcrumbs";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { CreditCardForm } from "@/components/checkout/CreditCardForm";
 import { PaymentSummary } from "@/components/checkout/PaymentSummary";
+import { CheckoutErrorBoundary } from "@/components/checkout/ErrorBoundary";
 import { useStore } from "@/store/useStore";
 import { apiFetch } from "@/lib/apiClient";
 import { useState } from "react";
@@ -88,9 +89,11 @@ export default function PaymentPage() {
           {/* Column Block Two (Center Data Collection Canvas) */}
           <div className="w-full lg:w-2/4">
             {paymentMethod === "CARD" && (
-              <Elements stripe={stripePromise}>
-                <CreditCardForm />
-              </Elements>
+              <CheckoutErrorBoundary>
+                <Elements stripe={stripePromise}>
+                  <CreditCardForm />
+                </Elements>
+              </CheckoutErrorBoundary>
             )}
             
             {paymentMethod === "COD" && (
