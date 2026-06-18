@@ -572,6 +572,25 @@ class AdminAnalyticsView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        return Response({}, status=status.HTTP_200_OK)
+        from django.db import models
+        paid_statuses = ['Paid', 'Shipped', 'Delivered']
+        paid_orders = Order.objects.filter(status__in=paid_statuses)
+        
+        gross_revenue = paid_orders.aggregate(sum=models.Sum('total_price'))['sum'] or 0.00
+        gross_revenue = float(gross_revenue)
+        
+        total_orders_count = Order.objects.count()
+        paid_orders_count = paid_orders.count()
+        
+        aov = 0.00
+        if paid_orders_count > 0:
+            aov = gross_revenue / paid_orders_count
+            
+        return Response({
+            'gross_revenue': gross_revenue,
+            'aov': aov,
+            'total_orders': total_orders_count,
+            'paid_orders': paid_orders_count,
+        }, status=status.HTTP_200_OK)
 
 
