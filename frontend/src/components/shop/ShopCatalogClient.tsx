@@ -22,31 +22,66 @@ export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [activeSort, setActiveSort] = useState("");
 
-  // Dynamic filter lists
-  const categories = [
-    { id: "all", label: "Shop All" },
-    { id: "skin", label: "Skin Care" },
-    { id: "makeup", label: "Makeup" },
-    { id: "essentials", label: "Daily Essentials" }
+  // Filter definitions
+  const allCategories = [
+    { slug: "treatments-mask", label: "Treatments & Mask" },
+    { slug: "daily-essentials", label: "Daily Essentials" },
+    { slug: "color-cosmetics", label: "Color Cosmetics" },
+    { slug: "face-makeup", label: "Face Makeup" },
   ];
 
-  // Filtering Logic
-  const filteredProducts = useMemo(() => {
-    return initialProducts.filter((product) => {
-      const matchesSearch = 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (product.category && product.category.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      const matchesCategory =
-        activeCategory === "all" ||
-        (activeCategory === "skin" && (product.category?.toLowerCase().includes("skin") || product.category?.toLowerCase().includes("treatments") || product.category?.toLowerCase().includes("mask"))) ||
-        (activeCategory === "makeup" && (product.category?.toLowerCase().includes("makeup") || product.category?.toLowerCase().includes("cosmetics"))) ||
-        (activeCategory === "essentials" && product.category?.toLowerCase().includes("essentials"));
-
-      return matchesSearch && matchesCategory;
+  const allConcerns = useMemo(() => {
+    const concernsSet = new Set<string>();
+    initialProducts.forEach((p) => {
+      p.skinConcerns?.forEach((c) => concernsSet.add(c));
     });
-  }, [initialProducts, searchQuery, activeCategory]);
+    return Array.from(concernsSet).sort();
+  }, [initialProducts]);
+
+  const allIngredients = useMemo(() => {
+    const ingredientsSet = new Set<string>();
+    initialProducts.forEach((p) => {
+      p.keyIngredients?.forEach((i) => ingredientsSet.add(i));
+    });
+    return Array.from(ingredientsSet).sort();
+  }, [initialProducts]);
+
+  // Dynamic products fetching matching active filter lists & sort criteria
+  useEffect(() => {
+    let isMounted = true;
+    const loadFilteredProducts = async () => {
+      setLoading(true);
+      try {
+        const results = await getProducts({
+          categories: selectedCategories,
+          concerns: selectedConcerns,
+          ingredients: selectedIngredients,
+          sort: activeSort || undefined,
+        });
+        if (isMounted) {
+          let filtered = results;
+          if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = results.filter((p) =>
+              p.name.toLowerCase().includes(query) ||
+              p.description.toLowerCase().includes(query) ||
+              p.category?.toLowerCase().includes(query)
+            );
+          }
+          setProducts(filtered);
+        }
+      } catch (error) {
+        console.error("Error loading products:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadFilteredProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCategories, selectedConcerns, selectedIngredients, activeSort, searchQuery, initialProducts]);
 
   return (
     <div className="flex flex-col gap-8">
