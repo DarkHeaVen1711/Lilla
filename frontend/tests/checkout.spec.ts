@@ -88,7 +88,7 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
   await page.goto("/");
 
   // Verify that the HeroProductCard add button is visible
-  const heroAddButton = page.locator('button[aria-label="Add to cart"]');
+  const heroAddButton = page.locator('button[aria-label="Add to cart"]').first();
   await expect(heroAddButton).toBeVisible();
 
   // Verify the cart badge shows 1
