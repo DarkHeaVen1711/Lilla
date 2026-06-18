@@ -12,7 +12,8 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Optimized Typography**: Powered by Google Fonts (`Darker Grotesque`) utilizing `display: swap` configurations to maximize Cumulative Layout Shift (CLS) scores.
 
 ### 2. State-of-the-Art Client State Machine
-- **Zustand Persistence**: Cart items, user session metadata, and shipping details persist in local storage.
+- **Zustand Persistence & Cart Unification**: Unified cart operations across the PDP catalog, promotional deals, and home sections under a single persisted Zustand store, completely eliminating legacy context states and badge desync.
+- **Client-Side Silent Token Refresh**: Seamlessly schedules access-token rotation using refresh tokens on protected routes via server-side middleware and custom API proxy client fetch wrappers.
 - **Guest Interceptor (Frozen Intents)**: When guest users perform actions (like adding items to favorites or checkout), the store intercepts the intent, prompts for authentication, and automatically resumes/flushes the cached action on successful login.
 - **Promotional Calculations**: Auto-calculates subtotals, shipping costs, and a 20% cart discount upon applying coupon code `TRYBEAUTY`.
 
@@ -31,6 +32,8 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 ### 5. Dynamic Performance & Revalidation
 - **On-Demand Cache Revalidation**: Asynchronous Django post-save/post-delete signals send tags to the Next.js revalidation endpoint (`/api/revalidate`), enabling Incremental Static Regeneration (ISR) whenever products or combo packages change.
 - **Eager Loading Database Audit**: All database list queries explicitly chain `.select_related()` and `.prefetch_related()` to eliminate nested N+1 query hits.
+- **App Router Resilience & Loading Skeletons**: Integrated instant skeleton screens (`loading.tsx`) and error recovery boundaries (`error.tsx`) for PDP and catalog search paths to improve fault tolerance.
+- **Global Payment Element Error Boundary**: Wrapped the Stripe Elements rendering context in a custom boundary to gracefully handle external JS script load failures.
 
 ### 6. Production Observability & Monitoring
 - **Sentry Observability Filters**: Edge-safe Sentry telemetry integrations scrub sensitive fields (OTP keys, passwords, JWT access tokens, and `Authorization` headers) before sending telemetry frames.
@@ -44,6 +47,10 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Guest Favorites Sync**: Merges client-side local storage wishlists with the backend database upon customer login.
 - **Saved Address Selector**: Checkout billing form retrieves previous addresses in a selector dropdown, with a "Save address" checkbox for new ones.
 - **Customer Order History**: Interactive purchase list at `/account/orders` showing order codes, dates, color-coded statuses, items, and pricing.
+
+### 9. Accessibility & Motion Guidelines
+- **Reduced Motion Support**: Detects system preferences (`prefers-reduced-motion: reduce`) and automatically disables or minimizes Framer Motion transitions/animations to prevent vestibular triggers.
+- **Keyboard-Focus and Dialog Semantics**: Fully accessibility-hardened `AuthModal` overlay implementing focus traps, auto-focus return, Escape-key dismissals, and appropriate ARIA attributes.
 
 ---
 
