@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { OrderConfirmationCard } from "@/components/checkout/OrderConfirmationCard";
-import { useCommerce } from "@/components/providers/CommerceProvider";
+import { useStore } from "@/store/useStore";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
 import { getHomePageData } from "@/lib/homepageData";
 
 export default function OrderConfirmationPage() {
-  const { cartItems } = useCommerce();
+  const cartItems = useStore((s) => s.cart.items);
   const [order, setOrder] = useState<any>(null);
   const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
 
