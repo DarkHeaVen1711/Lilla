@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address
+from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address, Coupon
 from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
@@ -473,4 +473,30 @@ class AddressViewSet(viewsets.ModelViewSet):
         if serializer.validated_data.get('is_default', False):
             Address.objects.filter(user=self.request.user).update(is_default=False)
         serializer.save()
+
+
+class CouponValidateView(APIView):
+    def post(self, request, *args, **kwargs):
+        code = request.data.get('code')
+        if not code:
+            return Response({'valid': False, 'message': 'Coupon code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            coupon = Coupon.objects.get(code__iexact=code.strip())
+            # Check if coupon is active
+            if not coupon.is_active:
+                return Response({'valid': False, 'message': 'Coupon is inactive.'}, status=status.HTTP_200_OK)
+            
+            # Check if coupon is expired
+            if coupon.expires_at and coupon.expires_at < timezone.now():
+                return Response({'valid': False, 'message': 'Coupon has expired.'}, status=status.HTTP_200_OK)
+            
+            return Response({
+                'valid': True,
+                'code': coupon.code,
+                'discount_percentage': float(coupon.discount_percentage)
+            }, status=status.HTTP_200_OK)
+            
+        except Coupon.DoesNotExist:
+            return Response({'valid': False, 'message': 'Invalid coupon code.'}, status=status.HTTP_200_OK)
 

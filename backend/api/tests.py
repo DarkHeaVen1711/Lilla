@@ -6,7 +6,7 @@ from django.test import override_settings
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
-from api.models import Category, Product, Combo, Order
+from api.models import Category, Product, Combo, Order, Coupon
 from unittest.mock import patch, MagicMock
 
 class CatalogAPITests(APITestCase):
@@ -317,6 +317,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             stock=5,
             is_active=True
         )
+        self.coupon = Coupon.objects.create(code="TRYBEAUTY", discount_percentage=20.00, is_active=True)
         self.url = reverse('order-create')
 
     def test_successful_order_deducts_stock(self):
@@ -327,6 +328,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             "shipping_city": "Test City",
             "shipping_postal_code": "12345",
             "total_price": "23.00",
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "test-stock-prod",
@@ -352,6 +354,7 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
             "shipping_city": "Test City",
             "shipping_postal_code": "12345",
             "total_price": "63.00",
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "test-stock-prod",
@@ -370,4 +373,42 @@ class CheckoutConcurrencyAndStockTests(APITestCase):
         self.assertEqual(self.product.stock, 5)
         # Verify no order or order items were created
         self.assertEqual(Order.objects.filter(user_identifier="test@example.com").count(), 0)
+
+
+class CouponAPITests(APITestCase):
+
+    def setUp(self):
+        self.validate_url = reverse('coupons-validate')
+        self.coupon_valid = Coupon.objects.create(code="TRYBEAUTY", discount_percentage=20.00, is_active=True)
+        self.coupon_inactive = Coupon.objects.create(code="INACTIVE10", discount_percentage=10.00, is_active=False)
+        self.coupon_expired = Coupon.objects.create(
+            code="EXPIRED15",
+            discount_percentage=15.00,
+            is_active=True,
+            expires_at=timezone.now() - timedelta(days=1)
+        )
+
+    def test_validate_valid_coupon(self):
+        response = self.client.post(self.validate_url, {"code": "TRYBEAUTY"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.json()['valid'])
+        self.assertEqual(response.json()['discount_percentage'], 20.00)
+
+    def test_validate_inactive_coupon(self):
+        response = self.client.post(self.validate_url, {"code": "INACTIVE10"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.json()['valid'])
+        self.assertEqual(response.json()['message'], "Coupon is inactive.")
+
+    def test_validate_expired_coupon(self):
+        response = self.client.post(self.validate_url, {"code": "EXPIRED15"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.json()['valid'])
+        self.assertEqual(response.json()['message'], "Coupon has expired.")
+
+    def test_validate_nonexistent_coupon(self):
+        response = self.client.post(self.validate_url, {"code": "FAKECODE"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.json()['valid'])
+        self.assertEqual(response.json()['message'], "Invalid coupon code.")
 

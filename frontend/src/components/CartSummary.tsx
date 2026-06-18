@@ -15,7 +15,7 @@ type CartSummaryProps = {
 };
 
 export function CartSummary({ recommendedProducts }: CartSummaryProps) {
-  const { items: cartItems, subtotal, discountAmount, shippingFee, orderTotal, couponCode, couponActive } = useStore((s) => s.cart);
+  const { items: cartItems, subtotal, discountAmount, shippingFee, orderTotal, couponCode, couponActive, couponDiscountPercentage } = useStore((s) => s.cart);
   const removeFromCart = useStore((s) => s.removeFromCart);
   const updateQuantity = useStore((s) => s.updateQuantity);
   const clearCart = useStore((s) => s.clearCart);
@@ -27,8 +27,8 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
   const deliveryThreshold = 51;
   const progress = Math.min((subtotal / deliveryThreshold) * 100, 100);
 
-  const handleApplyCoupon = () => {
-    const result = applyCoupon(couponInput);
+  const handleApplyCoupon = async () => {
+    const result = await applyCoupon(couponInput);
     setCouponMsg({ text: result.message, ok: result.success });
   };
 
@@ -222,7 +222,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
                     animate={{ opacity: 1, height: "auto" }}
                     className="flex justify-between text-green-600"
                   >
-                    <span className="flex items-center gap-1.5"><Tag className="w-4 h-4" /> TRYBEAUTY (-20%)</span>
+                    <span className="flex items-center gap-1.5"><Tag className="w-4 h-4" /> {couponCode} (-{couponDiscountPercentage}%)</span>
                     <span className="font-extrabold">-${discountAmount.toFixed(2)}</span>
                   </motion.div>
                 )}

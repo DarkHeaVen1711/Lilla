@@ -62,8 +62,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_postal_code', 'total_price', 'status', 'created_at', 'items']
-        read_only_fields = ['id', 'user', 'status', 'created_at']
+        fields = ['id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_postal_code', 'total_price', 'status', 'created_at', 'items', 'coupon_code', 'discount_amount']
+        read_only_fields = ['id', 'user', 'status', 'created_at', 'discount_amount']
 
     def validate(self, attrs):
         items = attrs.get('items', [])
@@ -92,8 +92,26 @@ class OrderSerializer(serializers.ModelSerializer):
 
             calculated_subtotal += db_price * quantity
 
-        # total = subtotal - 20% discount + 15.00 delivery
-        discount = calculated_subtotal * decimal.Decimal('0.20')
+        # Validate Coupon
+        coupon_code = attrs.get('coupon_code')
+        discount_percentage = decimal.Decimal('0.00')
+        if coupon_code:
+            from .models import Coupon
+            from django.utils import timezone
+            try:
+                coupon = Coupon.objects.get(code__iexact=coupon_code.strip())
+                if not coupon.is_active:
+                    raise serializers.ValidationError({"coupon_code": "Coupon is inactive."})
+                if coupon.expires_at and coupon.expires_at < timezone.now():
+                    raise serializers.ValidationError({"coupon_code": "Coupon has expired."})
+                discount_percentage = coupon.discount_percentage
+            except Coupon.DoesNotExist:
+                raise serializers.ValidationError({"coupon_code": "Invalid coupon code."})
+
+        # Calculate discount
+        discount = calculated_subtotal * (discount_percentage / decimal.Decimal('100.00'))
+        discount = discount.quantize(decimal.Decimal('0.01'))
+        
         delivery_fee = decimal.Decimal('15.00')
         calculated_total = calculated_subtotal - discount + delivery_fee
         
@@ -103,6 +121,8 @@ class OrderSerializer(serializers.ModelSerializer):
                 f"Total price mismatch. Calculated: {calculated_total}, Submitted: {submitted_total}."
             )
 
+        # Save calculations into validated data
+        attrs['discount_amount'] = discount
         return attrs
 
     @transaction.atomic

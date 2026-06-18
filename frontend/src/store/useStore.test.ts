@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useStore } from "./useStore";
 
 describe("Lilla Store unit tests", () => {
@@ -8,9 +8,25 @@ describe("Lilla Store unit tests", () => {
     logoutUser();
     clearCheckoutForm();
     useStore.setState({ frozenIntent: null });
+
+    vi.stubGlobal("fetch", vi.fn(async (url: any, init: any) => {
+      const body = JSON.parse(init?.body || "{}");
+      if (body.code === "TRYBEAUTY") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ valid: true, code: "TRYBEAUTY", discount_percentage: 20.0 }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ valid: false, message: "Invalid coupon code." }),
+      };
+    }));
   });
 
-  it("should calculate correct total with TRYBEAUTY coupon applied", () => {
+  it("should calculate correct total with TRYBEAUTY coupon applied", async () => {
     const { addToCart, applyCoupon } = useStore.getState();
     addToCart({ id: "1", name: "Product 1", slug: "p1", price: 20, image: "" });
     addToCart({ id: "2", name: "Product 2", slug: "p2", price: 30, image: "" });
@@ -20,7 +36,7 @@ describe("Lilla Store unit tests", () => {
     expect(state.cart.shippingFee).toBe(15);
     expect(state.cart.orderTotal).toBe(65);
 
-    const result = applyCoupon("TRYBEAUTY");
+    const result = await applyCoupon("TRYBEAUTY");
     expect(result.success).toBe(true);
 
     state = useStore.getState();

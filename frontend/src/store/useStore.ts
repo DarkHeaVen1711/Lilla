@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { StaticImageData } from "next/image";
+import { apiFetch } from "@/lib/apiClient";
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ interface LillaStore {
     items: LineItem[];
     couponCode: string | null;
     couponActive: boolean;
+    couponDiscountPercentage: number;
     subtotal: number;
     discountAmount: number;
     shippingFee: number;
@@ -87,7 +89,7 @@ interface LillaStore {
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
-  applyCoupon: (code: string) => { success: boolean; message: string };
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
 
   // Frozen Intent — guest action interceptor cache
   frozenIntent: FrozenIntent | null;
@@ -129,10 +131,11 @@ const SHIPPING_FEE = 15;
 
 function recalcCart(
   items: LineItem[],
-  couponActive: boolean
+  couponActive: boolean,
+  couponDiscountPercentage: number
 ): { subtotal: number; discountAmount: number; shippingFee: number; orderTotal: number } {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const discountAmount = couponActive ? subtotal * COUPON_TRYBEAUTY_DISCOUNT : 0;
+  const discountAmount = couponActive ? subtotal * (couponDiscountPercentage / 100) : 0;
   const shippingFee = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   const orderTotal = subtotal - discountAmount + shippingFee;
   return { subtotal, discountAmount, shippingFee, orderTotal };
@@ -177,6 +180,7 @@ export const useStore = create<LillaStore>()(
         items: [],
         couponCode: null,
         couponActive: false,
+        couponDiscountPercentage: 0,
         subtotal: 0,
         discountAmount: 0,
         shippingFee: SHIPPING_FEE,
@@ -191,14 +195,14 @@ export const useStore = create<LillaStore>()(
                 i.id === product.id ? { ...i, quantity: i.quantity + qty } : i
               )
             : [...state.cart.items, { ...product, quantity: qty }];
-          const calcs = recalcCart(items, state.cart.couponActive);
+          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
       removeFromCart: (itemId) =>
         set((state) => {
           const items = state.cart.items.filter((i) => i.id !== itemId);
-          const calcs = recalcCart(items, state.cart.couponActive);
+          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
@@ -210,7 +214,7 @@ export const useStore = create<LillaStore>()(
               : state.cart.items.map((i) =>
                   i.id === itemId ? { ...i, quantity } : i
                 );
-          const calcs = recalcCart(items, state.cart.couponActive);
+          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
@@ -221,6 +225,7 @@ export const useStore = create<LillaStore>()(
             items: [],
             couponCode: null,
             couponActive: false,
+            couponDiscountPercentage: 0,
             subtotal: 0,
             discountAmount: 0,
             shippingFee: SHIPPING_FEE,
@@ -228,23 +233,40 @@ export const useStore = create<LillaStore>()(
           },
         })),
 
-      applyCoupon: (code) => {
-        const normalized = code.trim().toUpperCase();
-        if (normalized === "TRYBEAUTY") {
-          set((state) => {
-            const calcs = recalcCart(state.cart.items, true);
-            return {
-              cart: {
-                ...state.cart,
-                couponCode: "TRYBEAUTY",
-                couponActive: true,
-                ...calcs,
-              },
-            };
-          });
-          return { success: true, message: "TRYBEAUTY applied! 20% discount activated." };
+      applyCoupon: async (code) => {
+        const normalized = code.trim();
+        if (!normalized) {
+          return { success: false, message: "Coupon code is required." };
         }
-        return { success: false, message: "Invalid coupon code." };
+        try {
+          const res = await apiFetch("/api/coupons/validate/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: normalized }),
+          });
+          const data = await res.json();
+          if (res.ok && data.valid) {
+            set((state) => {
+              const discountPercent = Number(data.discount_percentage) || 0;
+              const calcs = recalcCart(state.cart.items, true, discountPercent);
+              return {
+                cart: {
+                  ...state.cart,
+                  couponCode: data.code,
+                  couponActive: true,
+                  couponDiscountPercentage: discountPercent,
+                  ...calcs,
+                },
+              };
+            });
+            return { success: true, message: `${data.code} applied! ${data.discount_percentage}% discount activated.` };
+          } else {
+            return { success: false, message: data.message || "Invalid coupon code." };
+          }
+        } catch (error) {
+          console.error("Coupon validation error:", error);
+          return { success: false, message: "Failed to validate coupon code." };
+        }
       },
 
       // ── Frozen Intent ─────────────────────────────────────────────────────
@@ -314,6 +336,7 @@ export const useStore = create<LillaStore>()(
           shipping_postal_code: billingAddress.zip || "10001",
           total_price: cart.orderTotal.toFixed(2),
           payment_method: paymentMethod,
+          coupon_code: cart.couponCode,
           items: cart.items.map(item => ({
             product_id: item.id,
             product_name: item.name,

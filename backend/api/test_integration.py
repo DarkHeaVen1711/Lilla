@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.test import override_settings
 from django.contrib.auth.models import User
-from api.models import Category, Product, Order, OrderItem
+from api.models import Category, Product, Order, OrderItem, Coupon
 
 @override_settings(CACHES={
     'default': {
@@ -29,6 +29,7 @@ class CriticalPathIntegrationTests(APITestCase):
             stock=5,
             is_active=True
         )
+        self.coupon = Coupon.objects.create(code="TRYBEAUTY", discount_percentage=20.00, is_active=True)
         
         # Test urls
         self.request_otp_url = reverse('auth-request-otp')
@@ -97,6 +98,7 @@ class CriticalPathIntegrationTests(APITestCase):
             "shipping_city": "Los Angeles",
             "shipping_postal_code": "90001",
             "total_price": "55.00",  # calculated total: subtotal 50 - 20% (10) + 15 delivery fee = 55.00
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "lilla-glow-oil",
@@ -113,7 +115,7 @@ class CriticalPathIntegrationTests(APITestCase):
         # Check database stock updated correctly
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 3)
-
+ 
         # 2. Try to purchase 4 items (available stock is now 3) - should fail due to stock depletion
         payload_fail = {
             "user_identifier": self.test_email,
@@ -122,6 +124,7 @@ class CriticalPathIntegrationTests(APITestCase):
             "shipping_city": "Los Angeles",
             "shipping_postal_code": "90001",
             "total_price": "95.00",  # subtotal 100 - 20% (20) + 15 fee = 95.00
+            "coupon_code": "TRYBEAUTY",
             "items": [
                 {
                     "product_id": "lilla-glow-oil",
