@@ -54,17 +54,52 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').all()
-        category_slug = self.request.query_params.get('category', None)
-        featured = self.request.query_params.get('featured', None)
-        concern = self.request.query_params.get('concern', None)
+        
+        # 1. Multi-select Categories (list variable or comma-separated)
+        categories = self.request.query_params.getlist('category')
+        cats = []
+        for c in categories:
+            cats.extend([x.strip() for x in c.split(',') if x.strip()])
+        if cats:
+            queryset = queryset.filter(category__slug__in=cats)
 
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
+        # 2. Featured filter
+        featured = self.request.query_params.get('featured', None)
         if featured == 'true':
             queryset = queryset.filter(featured=True)
-        if concern:
-            # Match skin concern inside JSON array
-            queryset = queryset.filter(skin_concerns__icontains=concern)
+
+        # 3. Multi-select Skin Concerns
+        concerns = self.request.query_params.getlist('concern')
+        cons = []
+        for c in concerns:
+            cons.extend([x.strip() for x in c.split(',') if x.strip()])
+        if cons:
+            q_objects = Q()
+            for concern in cons:
+                q_objects |= Q(skin_concerns__icontains=concern)
+            queryset = queryset.filter(q_objects)
+
+        # 4. Multi-select Ingredients
+        ingredients = self.request.query_params.getlist('ingredient')
+        ings = []
+        for i in ingredients:
+            ings.extend([x.strip() for x in i.split(',') if x.strip()])
+        if ings:
+            q_objects = Q()
+            for ingredient in ings:
+                q_objects |= Q(key_ingredients__icontains=ingredient)
+            queryset = queryset.filter(q_objects)
+
+        # 5. Sorting
+        sort_by = self.request.query_params.get('sort', None)
+        if sort_by == 'price_asc':
+            queryset = queryset.order_by('price')
+        elif sort_by == 'price_desc':
+            queryset = queryset.order_by('-price')
+        elif sort_by == 'rating':
+            queryset = queryset.order_by('-rating')
+        elif sort_by == 'newest':
+            queryset = queryset.order_by('-created_at')
 
         return queryset
 
