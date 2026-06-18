@@ -30,8 +30,8 @@ class CreatePaymentIntentView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
                 
-        # Match OrderSerializer validation formula: subtotal - 20% discount + 15.00 delivery fee
-        discount = calculated_subtotal * decimal.Decimal('0.20')
+        # Match OrderSerializer validation formula: subtotal - order.discount_amount + 15.00 delivery fee
+        discount = order.discount_amount
         delivery_fee = decimal.Decimal('15.00')
         calculated_total = calculated_subtotal - discount + delivery_fee
         
