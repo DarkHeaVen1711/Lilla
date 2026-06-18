@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/store/useStore";
+import { apiFetch } from "@/lib/apiClient";
 import { ShoppingBag, Loader2 } from "lucide-react";
 
 interface Order {
@@ -18,7 +19,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    fetch("/api/orders").then(r => r.ok ? r.json() : []).then(d => {
+    apiFetch("/api/orders").then(r => r.ok ? r.json() : []).then(d => {
       setOrders(Array.isArray(d) ? d : []);
       setLoading(false);
     }).catch(() => setLoading(false));

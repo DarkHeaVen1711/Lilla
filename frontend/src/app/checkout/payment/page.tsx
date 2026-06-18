@@ -6,6 +6,7 @@ import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelect
 import { CreditCardForm } from "@/components/checkout/CreditCardForm";
 import { PaymentSummary } from "@/components/checkout/PaymentSummary";
 import { useStore } from "@/store/useStore";
+import { apiFetch } from "@/lib/apiClient";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -51,7 +52,7 @@ export default function PaymentPage() {
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-      const res = await fetch("/api/orders", { method: "POST", headers, body: JSON.stringify(orderPayload) });
+      const res = await apiFetch("/api/orders", { method: "POST", headers, body: JSON.stringify(orderPayload) });
       if (!res.ok) throw new Error(`Failed to place order: ${res.statusText}`);
 
       const orderData = await res.json();

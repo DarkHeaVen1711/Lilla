@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { apiFetch } from "@/lib/apiClient";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const CARD_ELEMENT_OPTIONS = {
@@ -78,7 +79,7 @@ export function CreditCardForm() {
         })),
       };
 
-      const orderRes = await fetch("/api/orders/", {
+      const orderRes = await apiFetch("/api/orders/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderPayload),
@@ -93,7 +94,7 @@ export function CreditCardForm() {
       const orderId = orderData.id;
 
       // Step 2: Request Stripe PaymentIntent client_secret
-      const intentRes = await fetch("/api/payments/create-intent/", {
+      const intentRes = await apiFetch("/api/payments/create-intent/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order_id: orderId }),
@@ -132,7 +133,7 @@ export function CreditCardForm() {
       if (paymentIntent && paymentIntent.status === "succeeded") {
         if (user && saveAddress) {
           try {
-            await fetch("/api/addresses/", {
+            await apiFetch("/api/addresses/", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
