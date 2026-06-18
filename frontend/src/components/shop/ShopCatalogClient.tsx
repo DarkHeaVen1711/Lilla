@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, SlidersHorizontal, X, ArrowUpDown, Filter } from "lucide-react";
 import { CatalogCard } from "@/components/shop/CatalogCard";
 import type { CommerceProduct } from "@/lib/homepageData";
+import { getProducts } from "@/lib/productAdapter";
 
 type ShopCatalogClientProps = {
   initialProducts: CommerceProduct[];
@@ -11,7 +12,15 @@ type ShopCatalogClientProps = {
 
 export function ShopCatalogClient({ initialProducts }: ShopCatalogClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [products, setProducts] = useState<CommerceProduct[]>(initialProducts);
+  const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Active filters & sorting states
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [activeSort, setActiveSort] = useState("");
 
   // Dynamic filter lists
   const categories = [
