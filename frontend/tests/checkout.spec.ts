@@ -12,12 +12,12 @@ test("should verify catalogue renders and checkout redirects to login", async ({
 
   // Check catalogue page rendering
   await page.goto("/shop", { waitUntil: "domcontentloaded" });
-  const catalogHeading = page.locator("h1");
+  const catalogHeading = page.locator("h1").first();
   await expect(catalogHeading).toBeVisible();
 
   // Verify cart page loads
   await page.goto("/cart", { waitUntil: "domcontentloaded" });
-  const cartHeading = page.locator("h1");
+  const cartHeading = page.locator("h1").first();
   await expect(cartHeading).toBeVisible();
 
   // Verify checkout server-side middleware redirects to login when unauthenticated
