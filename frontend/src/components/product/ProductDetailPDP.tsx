@@ -432,10 +432,10 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               <div className="flex items-center gap-2 bg-brand-bg-gray border border-gray-100 px-4 py-2 rounded-full shadow-sm">
                 <div className="flex items-center text-yellow-500">
                   <Star className="w-5 h-5 fill-current" />
-                  <span className="text-lg md:text-xl font-bold text-black ml-1">{(product.rating || 4.8).toFixed(1)}</span>
+                  <span className="text-lg md:text-xl font-bold text-black ml-1">{ratingVal.toFixed(1)}</span>
                 </div>
                 <span className="text-gray-300">|</span>
-                <span className="text-base font-semibold text-gray-500">{product.reviews || 108} Ratings</span>
+                <span className="text-base font-semibold text-gray-500">{reviewsCount} Ratings</span>
               </div>
             </div>
 
@@ -829,26 +829,20 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
           {/* Left Block: Aggregated Metrics Matrix */}
           <div className="flex flex-col gap-8 bg-brand-bg-gray p-8 rounded-[32px] border border-gray-100 shadow-sm">
             <div className="flex items-center gap-6">
-              <span className="text-7xl font-bold font-serif leading-none">{(product.rating || 4.8).toFixed(1)}</span>
+              <span className="text-7xl font-bold font-serif leading-none">{ratingVal.toFixed(1)}</span>
               <div className="flex flex-col">
                 <div className="flex items-center text-yellow-500 gap-1 mb-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-current" />
+                    <Star key={i} className={`w-5 h-5 ${i < Math.round(ratingVal) ? "fill-current" : "text-gray-200"}`} />
                   ))}
                 </div>
-                <span className="text-base font-semibold text-gray-500">{product.reviews || 108} Ratings</span>
+                <span className="text-base font-semibold text-gray-500">{reviewsCount} Ratings</span>
               </div>
             </div>
 
             {/* Star Distribution Rows */}
             <div className="flex flex-col gap-3 font-semibold text-base">
-              {[
-                { star: 5, weight: "82%" },
-                { star: 4, weight: "12%" },
-                { star: 3, weight: "4%" },
-                { star: 2, weight: "2%" },
-                { star: 1, weight: "0%" },
-              ].map((row) => (
+              {starDistribution.map((row) => (
                 <div key={row.star} className="flex items-center gap-4">
                   <span className="w-3 text-right">{row.star}</span>
                   <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500 shrink-0" />
