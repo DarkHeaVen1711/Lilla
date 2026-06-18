@@ -116,6 +116,14 @@ class Order(models.Model):
     payment_intent_id = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_status = self.status
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self._original_status = self.status
+
     def __str__(self):
         return f"Order {self.id} ({self.user_identifier})"
 

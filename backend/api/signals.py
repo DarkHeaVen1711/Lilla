@@ -4,7 +4,8 @@ import logging
 import requests
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Product, Combo
+from .models import Product, Combo, Order
+from .emails import send_html_invoice_email
 
 logger = logging.getLogger(__name__)
 
@@ -42,3 +43,10 @@ def product_changed_signal(sender, instance, **kwargs):
 def combo_changed_signal(sender, instance, **kwargs):
     tags = ["combos", f"combo-{instance.slug}"]
     send_revalidation_request(tags)
+
+@receiver(post_save, sender=Order)
+def order_payment_status_signal(sender, instance, created, **kwargs):
+    original_status = getattr(instance, '_original_status', None)
+    if instance.status == "Paid" and original_status != "Paid":
+        if "@" in instance.user_identifier:
+            send_html_invoice_email(instance)
