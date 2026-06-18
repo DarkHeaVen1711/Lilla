@@ -65,6 +65,24 @@ test("should verify product adds to cart and updates navbar badge", async ({ pag
     });
   });
 
+  // Pre-authenticate user via local storage to bypass auth gate
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "lilla-store",
+      JSON.stringify({
+        state: {
+          user: {
+            token: "mock-token",
+            identityString: "testuser@example.com",
+            isGuest: false,
+            isStaff: false,
+            metadata: {},
+          },
+        },
+      })
+    );
+  });
+
   // Go to homepage
   await page.goto("/");
 
