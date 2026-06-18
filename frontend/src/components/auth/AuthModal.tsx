@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { X, Edit3, Loader2, Phone, Mail } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { useOtpAuthFlow } from "@/hooks/useOtpAuthFlow";
 
 // ─── Country Code Data ────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
@@ -36,18 +37,32 @@ export function AuthModal() {
   const { authModal, closeAuthModal, setAuthModalStage, loginUser, flushFrozenIntent } = useStore();
 
   // ── Phase 1-2 State ──────────────────────────────────────────────────────
-  const [inputMode, setInputMode] = useState<"phone" | "email">("phone");
-  const [authValue, setAuthValue] = useState("");
-  const [countryCode, setCountryCode] = useState("+1");
-  const [agreed, setAgreed] = useState(false);
-  const [sendLoading, setSendLoading] = useState(false);
-  const [sendError, setSendError] = useState("");
-  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const {
+    step,
+    setStep,
+    authMethod,
+    setAuthMethod,
+    countryCode,
+    setCountryCode,
+    agreed,
+    setAgreed,
+    otp,
+    setOtp,
+    isLoading,
+    error,
+    setError,
+    devOtp,
+    setDevOtp,
+    inputMode,
+    setInputMode,
+    finalAuthMethod,
+    isValid,
+    hasPhoneFormat,
+    handleSendOtp: runSendOtp,
+    handleVerifyOtp,
+    resetForm,
+  } = useOtpAuthFlow();
 
-  // ── Phase 3 State ────────────────────────────────────────────────────────
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
   const otpRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -57,54 +72,32 @@ export function AuthModal() {
     useRef<HTMLInputElement>(null),
   ];
 
-  // ── Derived Validation ───────────────────────────────────────────────────
-  const isEmailMode = inputMode === "email";
-  const finalAuthMethod = isEmailMode
-    ? authValue.trim()
-    : `${countryCode}${authValue.replace(/^\+/, "").trim()}`;
+  // Aliases for compatibility with existing JSX
+  const authValue = authMethod;
+  const setAuthValue = setAuthMethod;
+  const sendError = error;
+  const setSendError = setError;
+  const verifyError = error;
+  const setVerifyError = setError;
+  const sendLoading = isLoading;
+  const verifyLoading = isLoading;
 
-  const isValid = agreed && (
-    isEmailMode
-      ? EMAIL_REGEX.test(authValue.trim())
-      : PHONE_REGEX.test(finalAuthMethod)
-  );
+  const isEmailMode = inputMode === "email";
 
   // ── Close & Reset ────────────────────────────────────────────────────────
   const handleClose = () => {
     closeAuthModal();
-    // Reset all local form state after animation
     setTimeout(() => {
-      setAuthValue("");
-      setOtp(["", "", "", "", "", ""]);
-      setSendError("");
-      setVerifyError("");
-      setDevOtp(null);
+      resetForm();
+      setStep("input");
     }, 300);
   };
 
   // ── Phase 2 → 3: Send OTP ────────────────────────────────────────────────
   const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValid) return;
-    setSendLoading(true);
-    setSendError("");
-    setDevOtp(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/request-otp/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity: finalAuthMethod }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSendError(data.detail || data.error || "Failed to send OTP. Please try again.");
-        return;
-      }
+    const success = await runSendOtp(e);
+    if (success) {
       setAuthModalStage("OTP_VERIFICATION");
-    } catch {
-      setSendError("Cannot reach the server. Is the backend running?");
-    } finally {
-      setSendLoading(false);
     }
   };
 
@@ -136,46 +129,10 @@ export function AuthModal() {
 
   // ── Phase 4: Verify OTP & Flush Intent ──────────────────────────────────
   const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = otp.join("");
-    if (code.length !== 6) return;
-    setVerifyLoading(true);
-    setVerifyError("");
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity: finalAuthMethod, otp: code }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setVerifyError(data.detail || data.error || "Invalid code. Please try again.");
-        return;
-      }
-
-      // Write session tokens into secure HTTP-only cookies
-      const cookieRes = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access: data.access, refresh: data.refresh }),
-      });
-
-      if (!cookieRes.ok) {
-        throw new Error("Failed to initialize secure session cookies.");
-      }
-
-      // Write user details into store + localStorage (omitting direct token storage)
-      loginUser(finalAuthMethod, !!data.user?.is_staff);
-      localStorage.setItem("lilla-user", JSON.stringify(data.user));
-
-      // Close modal, then flush the frozen intent (e.g. complete the add-to-cart)
+    await handleVerifyOtp(e, () => {
       handleClose();
       setTimeout(() => flushFrozenIntent(), 100);
-    } catch (err: any) {
-      setVerifyError(err.message || "Server error during verification. Please retry.");
-    } finally {
-      setVerifyLoading(false);
-    }
+    });
   };
 
   const isOtpVerificationStage = authModal.stage === "OTP_VERIFICATION";
