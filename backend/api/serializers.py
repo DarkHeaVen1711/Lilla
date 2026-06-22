@@ -62,8 +62,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_postal_code', 'total_price', 'status', 'created_at', 'items', 'coupon_code', 'discount_amount', 'currency']
-        read_only_fields = ['id', 'user', 'status', 'created_at', 'discount_amount']
+        fields = [
+            'id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 
+            'shipping_city', 'shipping_postal_code', 'total_price', 'status', 
+            'created_at', 'items', 'coupon_code', 'discount_amount', 'currency', 
+            'carrier_name', 'tracking_number', 'estimated_delivery_date', 'shipment_status'
+        ]
+        read_only_fields = ['id', 'user', 'status', 'created_at', 'discount_amount', 'tracking_number', 'estimated_delivery_date']
 
     def validate(self, attrs):
         items = attrs.get('items', [])
@@ -182,6 +187,60 @@ class OrderSerializer(serializers.ModelSerializer):
             extra={'context': {'order_id': str(order.id), 'user_identifier': order.user_identifier, 'total_price': str(order.total_price)}}
         )
         return order
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        import datetime
+        from django.utils import timezone
+        
+        current_shipment_status = instance.shipment_status
+        order_status = instance.status
+        created_at = instance.created_at
+        
+        if created_at and order_status not in ['Failed', 'Refunded', 'Pending']:
+            elapsed = timezone.now() - created_at
+            elapsed_seconds = elapsed.total_seconds()
+            
+            # Map elapsed time to standard flow for simulation/testing
+            if elapsed_seconds > 600:  # 10 mins
+                computed_status = "Delivered"
+            elif elapsed_seconds > 300:  # 5 mins
+                computed_status = "Out for Delivery"
+            elif elapsed_seconds > 180:  # 3 mins
+                computed_status = "Shipped"
+            elif elapsed_seconds > 60:  # 1 min
+                computed_status = "Processed"
+            else:
+                computed_status = "Placed"
+                
+            # Define status hierarchy to ensure we don't go backwards
+            status_order = {
+                "Placed": 1,
+                "Processed": 2,
+                "Shipped": 3,
+                "Out for Delivery": 4,
+                "Delivered": 5
+            }
+            
+            # Also align with the order's core status
+            min_status = "Placed"
+            if order_status == "Paid":
+                min_status = "Processed"
+            elif order_status == "Shipped":
+                min_status = "Shipped"
+            elif order_status == "Delivered":
+                min_status = "Delivered"
+                
+            current_val = status_order.get(current_shipment_status, 1)
+            computed_val = status_order.get(computed_status, 1)
+            min_val = status_order.get(min_status, 1)
+            
+            max_val = max(current_val, computed_val, min_val)
+            for k, v in status_order.items():
+                if v == max_val:
+                    data['shipment_status'] = k
+                    break
+        return data
 
 
 import re

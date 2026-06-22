@@ -16,7 +16,10 @@ import {
   Check, 
   LogOut, 
   ChevronRight, 
-  AlertCircle
+  AlertCircle,
+  Truck,
+  Clock,
+  Home
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +29,10 @@ interface Order {
   status: string;
   created_at: string;
   currency?: string;
+  carrier_name?: string;
+  tracking_number?: string;
+  estimated_delivery_date?: string;
+  shipment_status?: string;
   items: { product_name: string; price: string; quantity: number }[];
 }
 
@@ -38,6 +45,102 @@ const getCurrencySymbol = (currency?: string) => {
   };
   return symbols[currency || "USD"] || "$";
 };
+
+function FulfillmentTimeline({ order }: { order: Order }) {
+  const currentStatus = order.shipment_status || "Placed";
+  const steps = [
+    { status: "Placed", label: "Placed", icon: ShoppingBag },
+    { status: "Processed", label: "Processed", icon: Check },
+    { status: "Shipped", label: "Shipped", icon: Truck },
+    { status: "Out for Delivery", label: "Out for Delivery", icon: Clock },
+    { status: "Delivered", label: "Delivered", icon: Home },
+  ];
+  
+  const statusHierarchy: Record<string, number> = {
+    Placed: 1,
+    Processed: 2,
+    Shipped: 3,
+    "Out for Delivery": 4,
+    Delivered: 5
+  };
+  
+  const currentLevel = statusHierarchy[currentStatus] || 1;
+  
+  return (
+    <div className="mt-6 p-6 rounded-2xl bg-[#FAF8F5]/80 border border-gray-100/80 font-sans">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#B58B5E]">Shipment Details</span>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-1">
+            <p className="text-xs text-gray-500 font-semibold">
+              Carrier: <span className="text-gray-900 font-bold">{order.carrier_name || "DHL Express"}</span>
+            </p>
+            <p className="text-xs text-gray-500 font-semibold">
+              Tracking: <span className="text-gray-900 font-mono font-bold">{order.tracking_number || "N/A"}</span>
+            </p>
+            {order.estimated_delivery_date && (
+              <p className="text-xs text-gray-500 font-semibold">
+                Est. Delivery: <span className="text-[#B58B5E] font-bold">{new Date(order.estimated_delivery_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline tracker */}
+      <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-y-8 md:gap-y-0">
+        {/* Connection Bar (Horizontal for Desktop, Vertical for Mobile) */}
+        <div className="absolute top-[18px] left-[18px] md:top-1/2 md:left-0 right-0 h-[2px] bg-gray-100 -translate-y-1/2 hidden md:block" />
+        <div 
+          className="absolute top-[18px] left-[18px] md:top-1/2 md:left-0 h-[2px] bg-[#B58B5E] -translate-y-1/2 transition-all duration-500 hidden md:block"
+          style={{ width: `${((currentLevel - 1) / (steps.length - 1)) * 100}%` }}
+        />
+        
+        {/* Mobile Vertical line */}
+        <div className="absolute left-[18px] top-4 bottom-4 w-[2px] bg-gray-100 md:hidden" />
+        <div 
+          className="absolute left-[18px] top-4 w-[2px] bg-[#B58B5E] md:hidden transition-all duration-500" 
+          style={{ height: `${((currentLevel - 1) / (steps.length - 1)) * 100}%` }}
+        />
+
+        {steps.map((step, idx) => {
+          const stepLevel = idx + 1;
+          const isCompleted = currentLevel >= stepLevel;
+          const isActive = currentLevel === stepLevel;
+          const StepIcon = step.icon;
+
+          return (
+            <div key={step.status} className="relative z-10 flex flex-row md:flex-col items-center md:text-center gap-4 md:gap-2 md:flex-1">
+              <div 
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 relative ${
+                  isActive 
+                    ? "bg-[#B58B5E] text-white scale-110 shadow-[0_0_15px_rgba(181,139,94,0.4)]" 
+                    : isCompleted 
+                      ? "bg-[#B58B5E] text-white shadow-sm" 
+                      : "bg-white text-gray-400 border-2 border-gray-200"
+                }`}
+              >
+                {isActive && (
+                  <span className="absolute -inset-1 rounded-full border border-[#B58B5E] animate-ping opacity-75" />
+                )}
+                <StepIcon className="w-4 h-4" />
+              </div>
+              
+              <div className="flex flex-col md:items-center">
+                <span className={`text-xs font-bold ${isActive ? "text-[#B58B5E]" : isCompleted ? "text-gray-900" : "text-gray-400"}`}>
+                  {step.label}
+                </span>
+                {isActive && (
+                  <span className="text-[10px] text-gray-500 font-semibold md:text-center">Active Status</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface Address {
   id: number;
@@ -97,6 +200,14 @@ export default function AccountDashboard() {
   const [email, setEmail] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
+  const [expandedTracking, setExpandedTracking] = useState<Record<string, boolean>>({});
+
+  const toggleTracking = (orderId: string) => {
+    setExpandedTracking((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
 
   // Address Modal state
   const [addressModalOpen, setAddressModalOpen] = useState(false);
@@ -720,6 +831,21 @@ export default function AccountDashboard() {
                               </div>
                             ))}
                           </div>
+
+                          {order.status !== "Failed" && order.status !== "Refunded" && (
+                            <div className="border-t border-gray-100 pt-4 mt-4 flex flex-col">
+                              <button
+                                onClick={() => toggleTracking(order.id)}
+                                className="self-start text-xs font-bold uppercase tracking-wider text-[#B58B5E] hover:text-[#966d42] transition-all flex items-center gap-1.5"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                {expandedTracking[order.id] ? "Hide Tracking" : "Track Shipment"}
+                              </button>
+                              {expandedTracking[order.id] && (
+                                <FulfillmentTimeline order={order} />
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

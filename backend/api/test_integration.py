@@ -367,3 +367,71 @@ class CurrencyAndMultiCurrencyCheckoutTests(APITestCase):
         self.assertEqual(response.data["currency"], "EUR")
         self.assertEqual(response.data["total_price"], "36.80")
 
+
+class OrderTrackingIntegrationTests(APITestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name="Premium Skincare", slug="skincare")
+        self.product = Product.objects.create(
+            id="lilla-glow-oil",
+            slug="lilla-glow-oil",
+            name="Glow Oil",
+            price=25.00,
+            category=self.category,
+            stock=5,
+            is_active=True
+        )
+
+    def test_order_creation_populates_tracking_fields(self):
+        user = User.objects.create_user(username="tracker@lilla.com")
+        self.client.force_authenticate(user=user)
+
+        payload = {
+            "user_identifier": "tracker@lilla.com",
+            "shipping_name": "Jane Doe",
+            "shipping_address": "123 Tracker St",
+            "shipping_city": "Austin",
+            "shipping_postal_code": "78701",
+            "total_price": "40.00",
+            "items": [
+                {
+                    "product_id": "lilla-glow-oil",
+                    "product_name": "Glow Oil",
+                    "price": "25.00",
+                    "quantity": 1
+                }
+            ]
+        }
+        
+        url = reverse('order-create')
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify order has tracking fields
+        self.assertIn("tracking_number", response.data)
+        self.assertIn("carrier_name", response.data)
+        self.assertIn("estimated_delivery_date", response.data)
+        self.assertIn("shipment_status", response.data)
+        
+        self.assertTrue(response.data["tracking_number"].startswith("LILLA-US-"))
+        self.assertEqual(response.data["carrier_name"], "DHL Express")
+        self.assertEqual(response.data["shipment_status"], "Placed")
+        
+        # Check computed/simulated progression status:
+        # Since it was just created (elapsed < 60s), it should serialize to "Placed" if Pending,
+        # or "Processed" if we set the status to Paid. Let's verify by retrieving the order.
+        order_id = response.data["id"]
+        order = Order.objects.get(id=order_id)
+        
+        # Retrieve via API
+        detail_url = reverse('order-detail', kwargs={"id": order.id})
+        detail_response = self.client.get(detail_url)
+        self.assertEqual(detail_response.data["shipment_status"], "Placed")
+
+        # Now simulate order mark Paid
+        order.status = "Paid"
+        order.save()
+        
+        detail_response2 = self.client.get(detail_url)
+        # Should now be Processed (minimum status for Paid status order)
+        self.assertEqual(detail_response2.data["shipment_status"], "Processed")
+
