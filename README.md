@@ -59,6 +59,20 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Valid Email Gating**: Intercepts and filters checkouts, skipping delivery for phone-only checkouts that do not have a valid email address containing an `@` character.
 - **Responsive Rose-Gold HTML Template**: Incorporates an inline-styled aesthetic layout mirroring LILLA's minimalist premium experience, displaying line items, discounts, delivery fees, and grand totals.
 
+### 11. Real-time Multi-Currency Switcher (Phase 11)
+- **Dynamic Price Component**: Encapsulates currency symbols and active conversion rates locally cached, rendering prices in USD, EUR, GBP, or INR instantly.
+- **Exchange Rates Caching Views**: Backend caches conversion rates from `https://open.er-api.com/v6/latest/USD` for 24 hours, falling back to reliable hardcoded rates.
+- **Validation Security**: Django validation converts USD database catalog prices using conversion rates to match checkout currencies.
+
+### 12. SEO Rich Snippets & Sharing Previews (Phase 12)
+- **Dynamic Metadata**: Custom `generateMetadata` implementation pulls title, description, and preview image values for OpenGraph and Twitter cards.
+- **JSON-LD Structured Data**: Injects Product schemas (Schema.org/Product) for rich indexing and search result snippets.
+
+### 13. Customer Saved Address Book & Profile Center (Phase 13)
+- **Unified Account Dashboard**: Settings dashboard `/account` with tabs for Profile, Saved Addresses, and Orders.
+- **Address CRUD Modals**: Interactive React forms to add, edit, or delete shipping and billing details.
+- **Profile Editors**: Customer contact updates with username synchronization to prevent conflicts.
+
 ---
 
 ## 💻 Tech Stack
@@ -89,12 +103,13 @@ Lilla/
 │   ├── requirements.txt             # Python dependencies
 │   ├── lilla_backend/               # App configuration & settings
 │   └── api/                         # Primary API Application
+│       ├── migrations/              # Database schema migrations (0015_order_currency)
 │       ├── models.py                # Database schemas (Product, Combo, Order)
-│       ├── views.py                 # Endpoint logic (OTP, Catalog, Orders)
-│       ├── serializers.py           # Serializers & concurrency lock checkouts
+│       ├── views.py                 # Endpoint logic (OTP, Catalog, Orders, Currency)
+│       ├── serializers.py           # Serializers & currency/concurrency checkouts
 │       ├── throttling.py            # Custom DRF throttle rate limiters
 │       ├── logging_formatters.py    # Structured JSON log formatters
-│       ├── test_integration.py      # Concurrency & OTP lifecycle test suites
+│       ├── test_integration.py      # Concurrency & OTP/Multicurrency lifecycle tests
 │       ├── test_admin.py            # Administrative permissions & stock adjustment logs tests
 │       ├── test_account.py          # Favorites sync & address default toggle tests
 │       ├── test_invoices.py         # Order transition paid signal & synchronous outbox tests
@@ -105,8 +120,8 @@ Lilla/
     ├── next.config.mjs              # Next.js configuration
     ├── sentry.*.config.ts           # Sentry configurations (Client, Server, Edge)
     └── src/
-        ├── app/                     # Page views (e.g., /admin, /account/orders) & API Proxies
-        ├── components/              # React components (Cart, Auth, ProductCard)
+        ├── app/                     # Page views (/admin, /account, /api/currency-rates proxy)
+        ├── components/              # React components (Cart, Auth, ProductCard, Price)
         └── store/                   # Zustand state configuration
 ```
 
