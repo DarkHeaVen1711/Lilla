@@ -9,6 +9,7 @@ import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
 import { useAuthGate } from "@/lib/authGate";
 import { toast } from "sonner";
+import { Price } from "@/components/shared/Price";
 import type { CommerceProduct } from "@/lib/homepageData";
 
 type DealOfTheDaySectionProps = {
@@ -153,13 +154,9 @@ export function DealOfTheDaySection({
                     </h3>
                   </Link>
                   <div className="flex items-center gap-2.5 flex-wrap mt-1">
-                    <span className="text-2xl md:text-[26px] font-black text-black leading-none">
-                      ${product.price}
-                    </span>
+                    <Price amount={product.price} className="text-2xl md:text-[26px] font-black text-black leading-none" />
                     {product.originalPrice && (
-                      <span className="text-lg md:text-[20px] text-gray-400 font-bold line-through decoration-2 leading-none">
-                        ${product.originalPrice}
-                      </span>
+                      <Price amount={product.originalPrice} className="text-lg md:text-[20px] text-gray-400 font-bold line-through decoration-2 leading-none" />
                     )}
                     {product.discount && (
                       <span className="bg-brand-primary-light text-brand-secondary px-2.5 py-1 rounded-md text-sm md:text-[15px] font-extrabold leading-none">
