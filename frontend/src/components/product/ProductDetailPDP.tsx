@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Search, User, X, Star, Minus, Plus, MapPin, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Heart, Search, User, X, Star, Minus, Plus, MapPin, ChevronLeft, ChevronRight, Check, GitCompare } from "lucide-react";
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
 import { useAuthGate } from "@/lib/authGate";
@@ -51,6 +51,11 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const addToCart = useStore((s) => s.addToCart);
   const updateQuantity = useStore((s) => s.updateQuantity);
   const withAuthGate = useAuthGate();
+
+  const compareProducts = useStore((s) => s.compareProducts);
+  const addToCompare = useStore((s) => s.addToCompare);
+  const removeFromCompare = useStore((s) => s.removeFromCompare);
+  const isCompared = compareProducts.some((p) => p.id === initialProduct.id);
 
   const user = useStore((s) => s.user);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
@@ -347,6 +352,15 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
     );
   };
 
+  const handleToggleCompare = () => {
+    if (isCompared) {
+      removeFromCompare(initialProduct.id);
+      toast.success("Removed from comparison list.", { description: initialProduct.name });
+    } else {
+      addToCompare(initialProduct);
+    }
+  };
+
   const handleThumbnailClick = (thumb: any, idx: number) => {
     setActiveImage(thumb);
     if (gallerySwiper) {
@@ -604,6 +618,18 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                   aria-label="Toggle Wishlist"
                 >
                   <Heart className={`w-6 h-6 ${favorite ? "fill-current" : ""}`} />
+                </button>
+
+                {/* Compare Button */}
+                <button
+                  onClick={handleToggleCompare}
+                  className={`w-[56px] h-[56px] flex items-center justify-center rounded-full border transition-all ${
+                    isCompared ? "border-[#B58B5E] bg-[#B58B5E]/10 text-[#B58B5E] scale-95" : "border-gray-200 hover:border-black text-gray-500 hover:text-black"
+                  }`}
+                  aria-label="Toggle Compare"
+                  title="Compare Product"
+                >
+                  <GitCompare className="w-6 h-6" />
                 </button>
 
                 {/* Add to Cart */}
