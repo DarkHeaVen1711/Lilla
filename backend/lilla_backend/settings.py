@@ -109,17 +109,18 @@ import dj_database_url
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-if DATABASE_URL and 'test' not in sys.argv:
-    DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL) if DATABASE_URL else {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    },
+    'offline': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db_offline.sqlite3',
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
+
+DATABASE_ROUTERS = ['api.routers.HybridRouter']
 
 
 REDIS_URL = os.getenv('REDIS_URL')

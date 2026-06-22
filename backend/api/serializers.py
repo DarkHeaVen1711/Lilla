@@ -256,3 +256,15 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
         if Review.objects.filter(product=product, user=user).exists():
             raise serializers.ValidationError("You have already reviewed this product.")
         return attrs
+
+
+class StockAdjustmentSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    adjusted_by = serializers.CharField(source='user.username', read_only=True, default='System')
+
+    class Meta:
+        from .models import StockAdjustment
+        model = StockAdjustment
+        fields = ['id', 'product', 'product_name', 'old_stock', 'new_stock', 'reason', 'adjusted_by', 'created_at']
+        read_only_fields = ['id', 'created_at']
+

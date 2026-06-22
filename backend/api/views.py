@@ -490,6 +490,67 @@ class OrderRefundView(APIView):
             )
 
 
+class OrderStatusUpdateView(APIView):
+    """Admin endpoint to update order fulfillment status."""
+    permission_classes = [IsAdminUser]
+
+    # Define allowed status transitions as a directed graph
+    ALLOWED_TRANSITIONS = {
+        'Pending': ['Paid', 'Failed'],
+        'Paid': ['Shipped', 'Refunded'],
+        'Shipped': ['Delivered'],
+        'Delivered': [],
+        'Failed': ['Pending'],
+        'Refunded': [],
+    }
+
+    def patch(self, request, id, *args, **kwargs):
+        order = get_object_or_404(Order, id=id)
+        new_status = request.data.get('status')
+
+        if not new_status:
+            return Response(
+                {"error": "Missing 'status' field in request body."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        current_status = order.status
+        allowed = self.ALLOWED_TRANSITIONS.get(current_status, [])
+
+        if new_status not in allowed:
+            return Response(
+                {
+                    "error": f"Invalid transition from '{current_status}' to '{new_status}'.",
+                    "allowed_transitions": allowed
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = order.status
+        order.status = new_status
+        order.save()
+
+        transaction_logger.info(
+            f"Order {order.id} status updated: {old_status} -> {new_status}",
+            extra={'context': {
+                'order_id': str(order.id),
+                'old_status': old_status,
+                'new_status': new_status,
+                'updated_by': request.user.username
+            }}
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "order_id": str(order.id),
+                "old_status": old_status,
+                "new_status": new_status
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 from rest_framework import serializers
 
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -502,6 +563,62 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = AdminUserSerializer
+
+
+class AdminUserUpdateView(APIView):
+    """Admin endpoint to toggle user roles and account status."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, id, *args, **kwargs):
+        target_user = get_object_or_404(User, id=id)
+
+        # Prevent self-demotion
+        if target_user.id == request.user.id:
+            return Response(
+                {"error": "You cannot modify your own account via this endpoint."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        updated_fields = []
+
+        if 'is_staff' in request.data:
+            target_user.is_staff = bool(request.data['is_staff'])
+            updated_fields.append('is_staff')
+
+        if 'is_active' in request.data:
+            target_user.is_active = bool(request.data['is_active'])
+            updated_fields.append('is_active')
+
+        if not updated_fields:
+            return Response(
+                {"error": "No valid fields provided. Use 'is_staff' or 'is_active'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_user.save(update_fields=updated_fields)
+
+        security_logger.info(
+            f"Admin {request.user.username} updated user {target_user.username}: {updated_fields}",
+            extra={'context': {
+                'admin_user': request.user.username,
+                'target_user': target_user.username,
+                'target_user_id': target_user.id,
+                'updated_fields': updated_fields,
+                'is_staff': target_user.is_staff,
+                'is_active': target_user.is_active
+            }}
+        )
+
+        return Response({
+            "status": "success",
+            "user": {
+                "id": target_user.id,
+                "username": target_user.username,
+                "email": target_user.email,
+                "is_staff": target_user.is_staff,
+                "is_active": target_user.is_active,
+            }
+        }, status=status.HTTP_200_OK)
 
 
 from rest_framework.permissions import IsAuthenticated
@@ -657,3 +774,13 @@ class AdminAnalyticsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class StockAdjustmentListView(generics.ListAPIView):
+    """Admin endpoint to list all stock adjustment history records."""
+    permission_classes = [IsAdminUser]
+
+    def get_serializer_class(self):
+        from .serializers import StockAdjustmentSerializer
+        return StockAdjustmentSerializer
+
+    def get_queryset(self):
+        return StockAdjustment.objects.select_related('product', 'user').order_by('-created_at')

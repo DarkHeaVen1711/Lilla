@@ -3,8 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView, FavoriteViewSet, AddressViewSet,
-    CouponValidateView, AdminAnalyticsView
+    RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
+    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -22,12 +22,15 @@ urlpatterns = [
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:id>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path('admin/stock-adjustments/', StockAdjustmentListView.as_view(), name='admin-stock-adjustments'),
     path('payments/create-intent/', CreatePaymentIntentView.as_view(), name='payments-create-intent'),
     path('payments/webhook/', StripeWebhookView.as_view(), name='payments-webhook'),
     path('orders/', OrderCreateView.as_view(), name='order-create'),
     path('orders/<uuid:id>/', OrderDetailView.as_view(), name='order-detail'),
     path('orders/<uuid:id>/refund/', OrderRefundView.as_view(), name='order-refund'),
+    path('admin/orders/<uuid:id>/status/', OrderStatusUpdateView.as_view(), name='order-status-update'),
     path('coupons/validate/', CouponValidateView.as_view(), name='coupons-validate'),
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
     path('catalog/active-combos/', ActiveCombosListView.as_view(), name='catalog-active-combos'),
