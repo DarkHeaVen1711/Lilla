@@ -268,3 +268,43 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'product_name', 'old_stock', 'new_stock', 'reason', 'adjusted_by', 'created_at']
         read_only_fields = ['id', 'created_at']
 
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    phone = serializers.SerializerMethodField()
+
+    class Meta:
+        from django.contrib.auth.models import User
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone']
+        read_only_fields = ['id', 'phone']
+
+    def get_phone(self, obj):
+        if '@' not in obj.username:
+            return obj.username
+        return ''
+
+    def validate_email(self, value):
+        from django.contrib.auth.models import User
+        from django.db.models import Q
+        user = self.context['request'].user
+        value = value.strip().lower()
+        if value:
+            if User.objects.filter(Q(email__iexact=value) | Q(username__iexact=value)).exclude(id=user.id).exists():
+                raise serializers.ValidationError("This email address is already in use.")
+        return value
+
+    def update(self, instance, validated_data):
+        email = validated_data.get('email', '').strip().lower()
+        old_username = instance.username
+
+        if email and email != instance.email:
+            instance.email = email
+            if '@' in old_username:
+                instance.username = email
+
+        instance.first_name = validated_data.get('first_name', instance.first_name).strip()
+        instance.last_name = validated_data.get('last_name', instance.last_name).strip()
+        instance.save()
+        return instance
+
+

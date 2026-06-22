@@ -791,3 +791,21 @@ class StockAdjustmentListView(generics.ListAPIView):
 
     def get_queryset(self):
         return StockAdjustment.objects.select_related('product', 'user').order_by('-created_at')
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        from .serializers import UserProfileSerializer
+        serializer = UserProfileSerializer(request.user, context={'request': request})
+        return Response(serializer.data)
+
+    def patch(self, request, *args, **kwargs):
+        from .serializers import UserProfileSerializer
+        serializer = UserProfileSerializer(request.user, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

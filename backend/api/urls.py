@@ -4,7 +4,7 @@ from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
-    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView
+    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -21,6 +21,8 @@ urlpatterns = [
     path('auth/request-otp/', RequestOTPView.as_view(), name='auth-request-otp'),
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
+    path('auth/profile/', UserProfileView.as_view(), name='auth-profile'),
+
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/<int:id>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
