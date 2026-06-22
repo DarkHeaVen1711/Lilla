@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, Search, User, X, Menu, LogOut, LogIn, ShoppingBag } from "lucide-react";
@@ -9,6 +9,7 @@ import { m as motion, AnimatePresence } from "framer-motion";
 
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
+import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
 import logo from "@/images/logo.png";
 import beautyLogo from "@/images/beauty.png";
 import type { HomeSectionLink } from "@/lib/homepageData";
@@ -73,6 +74,32 @@ export function Navbar({ links }: NavbarProps) {
   const logoutUser = useStore((s) => s.logoutUser);
   const openAuthModal = useStore((s) => s.openAuthModal);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Search states
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<FrontendProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const products = await getProducts({ search: searchQuery.trim(), limit: 5 });
+        setSearchResults(products);
+      } catch (err) {
+        console.error("Search query fetch error:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const [activeHover, setActiveHover] = useState<"skin" | "makeup" | null>(null);
   const [mobileSkinOpen, setMobileSkinOpen] = useState(false);
@@ -270,13 +297,13 @@ export function Navbar({ links }: NavbarProps) {
 
         {/* Right Utility Icons */}
         <div className="flex items-center gap-4 lg:gap-6">
-          <Link
-            href="/shop"
+          <button
+            onClick={() => setIsSearchOpen(true)}
             aria-label="Search products"
-            className="hover:opacity-70 transition-opacity p-2 -mr-2 lg:p-0 lg:mr-0"
+            className="hover:opacity-70 transition-opacity p-2 -mr-2 lg:p-0 lg:mr-0 cursor-pointer focus:outline-none"
           >
             <Search className="w-6 h-6" />
-          </Link>
+          </button>
           {/* User Avatar / Auth — Desktop */}
           <div className="relative hidden lg:flex">
             {user ? (
@@ -482,6 +509,106 @@ export function Navbar({ links }: NavbarProps) {
                 </Link>
               ))}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex justify-center items-start pt-[100px]"
+            onClick={() => setIsSearchOpen(false)}
+          >
+            <motion.div
+              initial={{ y: -40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -40, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="bg-white w-full max-w-[700px] rounded-3xl shadow-2xl p-6 border border-gray-100 font-sans mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Input Area */}
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-4 mb-4">
+                <Search className="w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search products by name or ingredient..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 bg-transparent border-none outline-none text-base text-black placeholder-gray-400 font-medium"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setIsSearchOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Suggestions / Results */}
+              <div className="max-h-[350px] overflow-y-auto pr-1">
+                {searchLoading ? (
+                  <div className="flex flex-col gap-3 py-2">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className="flex gap-4 items-center animate-pulse">
+                        <div className="w-14 h-14 bg-gray-100 rounded-xl"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-100 rounded w-1/3"></div>
+                          <div className="h-3 bg-gray-100 rounded w-1/4"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  <div className="flex flex-col gap-3 py-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1">Products Found</p>
+                    {searchResults.map((prod) => (
+                      <Link
+                        key={prod.id}
+                        href={`/products/${prod.slug}`}
+                        onClick={() => {
+                          setIsSearchOpen(false);
+                          setSearchQuery("");
+                        }}
+                        className="flex gap-4 items-center hover:bg-gray-50 p-2 rounded-2xl transition-all group border border-transparent hover:border-gray-100"
+                      >
+                        <div className="w-12 h-12 bg-brand-bg-image rounded-xl relative flex-shrink-0 flex items-center justify-center p-1.5">
+                          <Image
+                            src={prod.image as any}
+                            alt={prod.name}
+                            fill
+                            className="object-contain p-0.5 mix-blend-multiply"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-black leading-tight group-hover:text-brand-primary transition-colors truncate">{prod.name}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium mt-0.5">{prod.category}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-sm font-bold text-black">${prod.price}</span>
+                          {prod.originalPrice && (
+                            <span className="text-[11px] text-gray-400 font-medium line-through block decoration-1">${prod.originalPrice}</span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : searchQuery ? (
+                  <div className="py-12 text-center text-gray-400 text-sm font-medium font-sans">
+                    No products found matching "{searchQuery}"
+                  </div>
+                ) : (
+                  <div className="py-10 text-center text-gray-400 text-sm font-medium font-sans">
+                    Type a query to search the catalogue...
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
