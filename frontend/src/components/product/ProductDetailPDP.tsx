@@ -17,7 +17,7 @@ import { Navigation } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
-import { m } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -142,6 +142,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
 
   // States
   const [activeImage, setActiveImage] = useState<any>(product.image);
+  const [activeHotspot, setActiveHotspot] = useState<number | null>(null);
   const [activeShade, setActiveShade] = useState("Rose");
   const [quantity, setQuantity] = useState(1);
   const [zipcode, setZipcode] = useState("123456");
@@ -387,7 +388,14 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                 grabCursor={true}
               >
                 {thumbnails.map((thumb, idx) => (
-                  <SwiperSlide key={idx} className="relative w-full h-full" onClick={() => setIsMainLightboxOpen(true)}>
+                  <SwiperSlide
+                    key={idx}
+                    className="relative w-full h-full"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('.hotspot-pin')) return;
+                      setIsMainLightboxOpen(true);
+                    }}
+                  >
                     <Image
                       src={thumb}
                       alt={`${product.name} gallery image ${idx + 1}`}
@@ -395,6 +403,62 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                       priority={idx === 0}
                       className="object-contain transition-transform duration-500 group-hover:scale-105"
                     />
+
+                    {/* Hotspot pins overlay for main product image */}
+                    {idx === 0 && product.features && product.features.length > 0 && (
+                      <div className="absolute inset-0 pointer-events-auto">
+                        {product.features.map((feat: any, fIdx: number) => {
+                          if (feat.x1 === undefined || feat.y1 === undefined) return null;
+                          const isHotspotActive = activeHotspot === fIdx;
+                          return (
+                            <div
+                              key={fIdx}
+                              className="absolute hotspot-pin"
+                              style={{ left: `${feat.x1}%`, top: `${feat.y1}%`, transform: 'translate(-50%, -50%)' }}
+                            >
+                              {/* Pulsing indicator */}
+                              <button
+                                onMouseEnter={() => setActiveHotspot(fIdx)}
+                                onMouseLeave={() => setActiveHotspot(null)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveHotspot(isHotspotActive ? null : fIdx);
+                                }}
+                                className="relative w-6 h-6 flex items-center justify-center focus:outline-none cursor-pointer group"
+                                aria-label={`View feature: ${feat.title}`}
+                              >
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-brand-primary/40 animate-ping opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary border-2 border-white shadow-md group-hover:scale-125 transition-transform"></span>
+                              </button>
+
+                              {/* Popover Bubble */}
+                              <AnimatePresence>
+                                {isHotspotActive && (
+                                  <m.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-gray-100 z-30 w-[240px] pointer-events-auto text-left"
+                                    onMouseEnter={() => setActiveHotspot(fIdx)}
+                                    onMouseLeave={() => setActiveHotspot(null)}
+                                  >
+                                    <div className="flex flex-col gap-1 text-xs">
+                                      <span className="bg-brand-primary-light text-brand-secondary font-bold px-2 py-0.5 rounded-full text-[10px] self-start mb-1 uppercase tracking-wider">
+                                        {feat.badge || "Feature"}
+                                      </span>
+                                      <h4 className="font-bold text-black text-sm">{feat.title}</h4>
+                                      <p className="text-gray-500 font-semibold mt-1 leading-relaxed">{feat.description}</p>
+                                    </div>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white"></div>
+                                  </m.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </SwiperSlide>
                 ))}
               </Swiper>
