@@ -119,6 +119,12 @@ interface LillaStore {
   setCurrency: (currency: string) => void;
   setRates: (rates: Record<string, number>) => void;
   fetchCurrencyRates: () => Promise<void>;
+
+  // Product Comparison
+  compareProducts: any[];
+  addToCompare: (product: any) => void;
+  removeFromCompare: (productId: string) => void;
+  clearCompare: () => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -419,15 +425,46 @@ export const useStore = create<LillaStore>()(
         clearCheckoutForm();
         return orderWithImages;
       },
+
+      // Product Comparison
+      compareProducts: [],
+      addToCompare: (product) => {
+        const { compareProducts } = get();
+        if (compareProducts.some((p) => p.id === product.id)) {
+          // Dynamic import or check for toast
+          try {
+            const { toast } = require("sonner");
+            toast.error("Product already in comparison list.");
+          } catch (e) {}
+          return;
+        }
+        if (compareProducts.length >= 3) {
+          try {
+            const { toast } = require("sonner");
+            toast.warning("You can compare up to 3 products at a time.");
+          } catch (e) {}
+          return;
+        }
+        set({ compareProducts: [...compareProducts, product] });
+        try {
+          const { toast } = require("sonner");
+          toast.success(`Added ${product.name} to comparison tray.`);
+        } catch (e) {}
+      },
+      removeFromCompare: (productId) => {
+        const { compareProducts } = get();
+        set({ compareProducts: compareProducts.filter((p) => p.id !== productId) });
+      },
+      clearCompare: () => set({ compareProducts: [] }),
     }),
     {
       name: "lilla-store",
-      // Only persist cart and user — auth modal & frozen intent are ephemeral
       partialize: (state) => ({
         user: state.user,
         cart: state.cart,
         currency: state.currency,
         rates: state.rates,
+        compareProducts: state.compareProducts,
         checkoutForm: {
           billingAddress: state.checkoutForm.billingAddress,
           sameAsShipping: state.checkoutForm.sameAsShipping,
