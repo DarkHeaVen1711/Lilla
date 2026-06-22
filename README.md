@@ -208,3 +208,9 @@ To run end-to-end user checkout flows against a running Next.js instance:
 cd frontend
 npm run test:e2e
 ```
+
+### 4. Admin Analytics (Phase 5) Verification
+To test the analytics reporting endpoints and visualizer:
+- **Backend Tests**: Run `python backend/manage.py test api` to verify permission configurations and aggregation logic.
+- **E2E verification**: Executes programmatic admin login via OTP and fetches `/api/admin/analytics/` endpoint.
+
