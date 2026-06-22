@@ -78,3 +78,52 @@ class AdminAnalyticsTestCase(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_analytics_metrics(self):
+        url = reverse('admin-analytics')
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        data = response.json()
+        
+        # Assert structure
+        keys = {
+            'gross_revenue', 'aov', 'total_orders', 'paid_orders',
+            'low_stock_count', 'catalog_items_count', 'total_users_count',
+            'daily_logs', 'top_products'
+        }
+        self.assertTrue(keys.issubset(data.keys()))
+        
+        # Assert math
+        # Gross Revenue = total price of self.order_paid (90.00)
+        self.assertEqual(data['gross_revenue'], 90.00)
+        
+        # Total Orders = order_paid + order_pending = 2
+        self.assertEqual(data['total_orders'], 2)
+        
+        # Paid Orders = 1
+        self.assertEqual(data['paid_orders'], 1)
+        
+        # AOV = 90.00 / 1 = 90.00
+        self.assertEqual(data['aov'], 90.00)
+        
+        # Catalog items count = 2 (product1, product2)
+        self.assertEqual(data['catalog_items_count'], 2)
+        
+        # Low stock count = 1 (product1 has stock=5 < 10)
+        self.assertEqual(data['low_stock_count'], 1)
+        
+        # Total users count = 2 (admin_user, customer_user)
+        self.assertEqual(data['total_users_count'], 2)
+        
+        # Top products - product1 (prod-1) has quantity 2 sold in paid orders, product2 has 1 sold.
+        # Order pending item quantity is ignored.
+        self.assertEqual(len(data['top_products']), 2)
+        self.assertEqual(data['top_products'][0]['product_id'], 'prod-1')
+        self.assertEqual(data['top_products'][0]['units_sold'], 2)
+        self.assertEqual(data['top_products'][1]['product_id'], 'prod-2')
+        self.assertEqual(data['top_products'][1]['units_sold'], 1)
+        
+        # Daily logs should have 30 entries
+        self.assertEqual(len(data['daily_logs']), 30)
