@@ -6,6 +6,7 @@ import { Search, ChevronDown, ChevronUp, Heart, Star } from "lucide-react";
 import Image from "next/image";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
 import { useCommerce } from "@/components/providers/CommerceProvider";
+import { Price } from "@/components/shared/Price";
 import type { FrontendProduct } from "@/lib/productAdapter";
 
 type CategoryLayoutClientProps = {
@@ -315,13 +316,9 @@ export function CategoryLayoutClient({
                       </h3>
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[18px] font-bold text-black">
-                        ${prod.price}
-                      </span>
+                      <Price amount={prod.price} className="text-[18px] font-bold text-black" />
                       {prod.originalPrice && (
-                        <span className="text-[16px] text-gray-400 font-medium line-through decoration-1">
-                          ${prod.originalPrice}
-                        </span>
+                        <Price amount={prod.originalPrice} className="text-[16px] text-gray-400 font-medium line-through decoration-1" />
                       )}
                       {prod.discount && (
                         <span className="bg-brand-primary-light text-brand-secondary px-2.5 py-0.5 rounded-full text-[13px] font-bold">

@@ -17,6 +17,7 @@ import { Navigation } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
+import { Price } from "@/components/shared/Price";
 import { m, AnimatePresence } from "framer-motion";
 
 import "swiper/css";
@@ -483,10 +484,10 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
             {/* Rating and Price Row */}
             <div className="flex items-center justify-between border-y border-gray-100 py-5">
               <div className="flex items-center gap-5">
-                <span className="text-4xl md:text-5xl lg:text-6xl font-black text-black leading-none">${product.price}</span>
+                <Price amount={product.price} className="text-4xl md:text-5xl lg:text-6xl font-black text-black leading-none" />
                 {product.originalPrice && (
                   <div className="flex items-center gap-2.5">
-                    <span className="text-2xl md:text-3xl text-gray-400 line-through decoration-1">${product.originalPrice}</span>
+                    <Price amount={product.originalPrice} className="text-2xl md:text-3xl text-gray-400 line-through decoration-1" />
                     <span className="bg-brand-primary/10 text-brand-primary px-2.5 py-1 rounded text-sm font-bold uppercase tracking-wider">
                       {product.discount || "Sale"}
                     </span>
