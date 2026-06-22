@@ -28,6 +28,77 @@ import {
   Bar
 } from "recharts";
 
+const ListInput = ({
+  label,
+  items = [],
+  onChange,
+  isColor = false
+}: {
+  label: string;
+  items: string[];
+  onChange: (newItems: string[]) => void;
+  isColor?: boolean;
+}) => {
+  const [inputValue, setInputValue] = useState("");
+  const safeItems = items || [];
+  return (
+    <div className="flex flex-col gap-1.5 mt-2">
+      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</label>
+      <div className="flex gap-2">
+        {isColor && (
+          <input
+            type="color"
+            value={inputValue.startsWith("#") && inputValue.length === 7 ? inputValue : "#000000"}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="w-10 h-9 p-0 border border-gray-200 rounded-xl cursor-pointer bg-white overflow-hidden shrink-0"
+          />
+        )}
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder={isColor ? "#ffffff or color picker" : `Add ${label.toLowerCase()}`}
+          className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            let val = inputValue.trim();
+            if (isColor && val && !val.startsWith("#")) {
+              val = "#" + val;
+            }
+            if (val && !safeItems.includes(val)) {
+              onChange([...safeItems, val]);
+              setInputValue("");
+            }
+          }}
+          className="bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors"
+        >
+          Add
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {safeItems.map((item, idx) => (
+          <span key={idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-gray-200/50 shadow-sm">
+            {isColor && (
+              <span className="w-3 h-3 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: item }} />
+            )}
+            <span className="font-mono">{item}</span>
+            <button
+              type="button"
+              onClick={() => onChange(safeItems.filter((_, i) => i !== idx))}
+              className="text-gray-400 hover:text-red-500 font-bold ml-0.5 text-sm leading-none"
+            >
+              &times;
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
 export default function AdminDashboard() {
   const user = useStore((s) => s.user);
   const router = useRouter();
@@ -36,48 +107,70 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [stockAdjustments, setStockAdjustments] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({
+
+  const getInitialProductState = () => ({
     id: "",
     name: "",
     slug: "",
     price: "",
     stock: "100",
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png",
-    is_active: true
+    is_active: true,
+    category: "",
+    description: "",
+    ingredients: "",
+    skin_concerns: [] as string[],
+    key_ingredients: [] as string[],
+    skin_types: [] as string[],
+    application_steps: [] as string[],
+    finish: "",
+    applicator: "",
+    shades: [] as string[],
+    is_deal_of_the_day: false,
+    deal_expires_at: ""
   });
+
+  const [newProduct, setNewProduct] = useState(getInitialProductState());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const formatDatetimeLocal = (dateStr: any) => {
+    if (!dateStr) return "";
     try {
-      setIsLoadingAnalytics(true);
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      
-      const prodRes = await fetch(`${apiBase}/api/products/`);
-      if (prodRes.ok) setProducts(await prodRes.json());
-      
-      const orderRes = await fetch("/api/orders/");
-      if (orderRes.ok) setOrders(await orderRes.json());
-      
-      const userRes = await fetch("/api/admin/users/");
-      if (userRes.ok) setUsers(await userRes.json());
-
-      const analyticsRes = await fetch("/api/admin/analytics/");
-      if (analyticsRes.ok) {
-        setAnalytics(await analyticsRes.json());
-      }
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    } finally {
-      setIsLoadingAnalytics(false);
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      const tzoffset = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - tzoffset).toISOString().slice(0, 16);
+    } catch {
+      return "";
     }
+  };
+
+  const handleOpenEditModal = (product: any) => {
+    setEditingProduct({
+      ...product,
+      category: product.category ? String(product.category) : "",
+      description: product.description || "",
+      ingredients: product.ingredients || "",
+      skin_concerns: product.skin_concerns || [],
+      key_ingredients: product.key_ingredients || [],
+      skin_types: product.skin_types || [],
+      application_steps: product.application_steps || [],
+      finish: product.finish || "",
+      applicator: product.applicator || "",
+      shades: product.shades || [],
+      is_deal_of_the_day: product.is_deal_of_the_day || false,
+      deal_expires_at: product.deal_expires_at ? formatDatetimeLocal(product.deal_expires_at) : ""
+    });
   };
 
   const handleDeleteProduct = async (slug: string) => {
@@ -115,13 +208,15 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           ...newProduct,
           price: parseFloat(newProduct.price),
-          stock: parseInt(newProduct.stock)
+          stock: parseInt(newProduct.stock),
+          category: newProduct.category ? parseInt(newProduct.category) : null,
+          deal_expires_at: newProduct.deal_expires_at ? new Date(newProduct.deal_expires_at).toISOString() : null
         }),
       });
       if (res.ok) {
         toast.success("Product added successfully!");
         setIsAddModalOpen(false);
-        setNewProduct({ id: "", name: "", slug: "", price: "", stock: "100", image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png", is_active: true });
+        setNewProduct(getInitialProductState());
         fetchData();
       } else {
         const errors = await res.json();
@@ -140,10 +235,11 @@ export default function AdminDashboard() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: editingProduct.name,
+          ...editingProduct,
           price: parseFloat(editingProduct.price),
           stock: parseInt(editingProduct.stock),
-          is_active: editingProduct.is_active
+          category: editingProduct.category ? parseInt(editingProduct.category) : null,
+          deal_expires_at: editingProduct.deal_expires_at ? new Date(editingProduct.deal_expires_at).toISOString() : null
         }),
       });
       if (res.ok) {
@@ -156,6 +252,132 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        alert("Order status updated successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update status: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleToggleUserRole = async (userId: number, currentStaffStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_staff: !currentStaffStatus }),
+      });
+      if (res.ok) {
+        alert("User role updated successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update role: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleRefundOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to refund this order? This will process a Stripe refund and set status to Refunded.")) return;
+    try {
+      const res = await fetch(`/api/orders/${orderId}/refund/`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        alert("Order refunded successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to refund order: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleToggleUserBlock = async (userId: number, currentActiveStatus: boolean) => {
+    const action = currentActiveStatus ? "block" : "unblock";
+    if (!confirm(`Are you sure you want to ${action} this user account?`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !currentActiveStatus }),
+      });
+      if (res.ok) {
+        alert(`User account ${action}ed successfully!`);
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to ${action} user: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const [
+        productsRes,
+        ordersRes,
+        usersRes,
+        analyticsRes,
+        stockAdjustmentsRes,
+        categoriesRes
+      ] = await Promise.allSettled([
+        fetch(`${apiBase}/api/products/`),
+        fetch("/api/orders/"),
+        fetch("/api/admin/users/"),
+        fetch("/api/admin/analytics/"),
+        fetch("/api/admin/stock-adjustments/"),
+        fetch(`${apiBase}/api/categories/`)
+      ]);
+
+      if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+        setProducts(await productsRes.value.json());
+      }
+      if (ordersRes.status === "fulfilled" && ordersRes.value.ok) {
+        setOrders(await ordersRes.value.json());
+      }
+      if (usersRes.status === "fulfilled" && usersRes.value.ok) {
+        setUsers(await usersRes.value.json());
+      }
+      if (analyticsRes.status === "fulfilled" && analyticsRes.value.ok) {
+        setAnalytics(await analyticsRes.value.json());
+      }
+      if (stockAdjustmentsRes.status === "fulfilled" && stockAdjustmentsRes.value.ok) {
+        setStockAdjustments(await stockAdjustmentsRes.value.json());
+      }
+      if (categoriesRes.status === "fulfilled" && categoriesRes.value.ok) {
+        setCategories(await categoriesRes.value.json());
+      }
+
+      setIsLoadingAnalytics(false);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      setIsLoadingAnalytics(false);
     }
   };
 
@@ -442,6 +664,46 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Inventory Stock Adjustments History Section */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+              <div>
+                <h3 className="font-serif text-lg text-black font-semibold">Inventory Stock Adjustments History</h3>
+                <p className="text-xs text-gray-400 font-semibold mt-0.5">Logs of manual/automatic inventory stock level alterations</p>
+              </div>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[600px] text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 font-semibold uppercase tracking-wider">
+                      <th className="pb-3 font-medium">Product</th>
+                      <th className="pb-3 font-medium">Adjusted By</th>
+                      <th className="pb-3 font-medium">Old Stock</th>
+                      <th className="pb-3 font-medium">New Stock</th>
+                      <th className="pb-3 font-medium">Reason</th>
+                      <th className="pb-3 font-medium text-right">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-gray-600 font-medium">
+                    {stockAdjustments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-400 italic">No inventory logs available.</td>
+                      </tr>
+                    ) : (
+                      stockAdjustments.map((sa) => (
+                        <tr key={sa.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 font-bold text-gray-900">{sa.product_name}</td>
+                          <td className="py-3">{sa.user_email || sa.user_username || "System / Admin"}</td>
+                          <td className="py-3 font-mono">{sa.old_stock}</td>
+                          <td className="py-3 font-mono text-gray-900 font-bold">{sa.new_stock}</td>
+                          <td className="py-3 text-gray-500">{sa.reason}</td>
+                          <td className="py-3 text-right text-gray-400 font-normal">{new Date(sa.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -504,7 +766,7 @@ export default function AdminDashboard() {
                         <td className="py-4 text-right">
                           <div className="flex justify-end gap-2">
                             <button
-                              onClick={() => { setEditingProduct(p); setIsEditModalOpen(true); }}
+                              onClick={() => handleOpenEditModal(p)}
                               className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors inline-flex"
                             >
                               <Edit className="w-4 h-4" />
@@ -526,71 +788,230 @@ export default function AdminDashboard() {
 
             {isAddModalOpen && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100">
+                <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100 max-h-[90vh]">
                   <h3 className="font-serif text-xl text-black font-semibold">Add New Product</h3>
-                  <form onSubmit={handleAddProduct} className="flex flex-col gap-3">
-                    <input
-                      type="text"
-                      placeholder="Product ID (e.g. skin-serum)"
-                      value={newProduct.id}
-                      onChange={(e) => setNewProduct({ ...newProduct, id: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Product Name"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Slug"
-                      value={newProduct.slug}
-                      onChange={(e) => setNewProduct({ ...newProduct, slug: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Price"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                        required
-                      />
-                      <input
-                        type="number"
-                        placeholder="Stock"
-                        value={newProduct.stock}
-                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                        required
+                  <form onSubmit={handleAddProduct} className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+                    {/* General Information */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">General Information</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Product ID</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. skin-serum"
+                            value={newProduct.id}
+                            onChange={(e) => setNewProduct({ ...newProduct, id: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Product Name</label>
+                          <input
+                            type="text"
+                            placeholder="Product Name"
+                            value={newProduct.name}
+                            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Slug</label>
+                          <input
+                            type="text"
+                            placeholder="Slug"
+                            value={newProduct.slug}
+                            onChange={(e) => setNewProduct({ ...newProduct, slug: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Category</label>
+                          <select
+                            value={newProduct.category}
+                            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-black"
+                          >
+                            <option value="">Select Category</option>
+                            {categories.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Price"
+                            value={newProduct.price}
+                            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Stock</label>
+                          <input
+                            type="number"
+                            placeholder="Stock"
+                            value={newProduct.stock}
+                            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Image URL</label>
+                        <input
+                          type="text"
+                          placeholder="Image URL"
+                          value={newProduct.image}
+                          onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
+                        <textarea
+                          placeholder="Product Description"
+                          value={newProduct.description}
+                          onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black h-20 resize-y"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Ingredients</label>
+                        <textarea
+                          placeholder="Ingredients list"
+                          value={newProduct.ingredients}
+                          onChange={(e) => setNewProduct({ ...newProduct, ingredients: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black h-20 resize-y"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Skincare Specifications */}
+                    <div className="space-y-3 pt-2">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Skincare Specifications</h4>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <ListInput
+                          label="Skin Concerns"
+                          items={newProduct.skin_concerns}
+                          onChange={(vals) => setNewProduct({ ...newProduct, skin_concerns: vals })}
+                        />
+                        <ListInput
+                          label="Key Ingredients"
+                          items={newProduct.key_ingredients}
+                          onChange={(vals) => setNewProduct({ ...newProduct, key_ingredients: vals })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <ListInput
+                          label="Skin Types"
+                          items={newProduct.skin_types}
+                          onChange={(vals) => setNewProduct({ ...newProduct, skin_types: vals })}
+                        />
+                        <ListInput
+                          label="Application Steps"
+                          items={newProduct.application_steps}
+                          onChange={(vals) => setNewProduct({ ...newProduct, application_steps: vals })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Makeup Specifications */}
+                    <div className="space-y-3 pt-2">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Makeup Specifications</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Finish</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Matte, Dewy"
+                            value={newProduct.finish}
+                            onChange={(e) => setNewProduct({ ...newProduct, finish: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Applicator</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Dropper, Brush"
+                            value={newProduct.applicator}
+                            onChange={(e) => setNewProduct({ ...newProduct, applicator: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          />
+                        </div>
+                      </div>
+                      <ListInput
+                        label="Shades (Hex Codes)"
+                        items={newProduct.shades}
+                        onChange={(vals) => setNewProduct({ ...newProduct, shades: vals })}
+                        isColor={true}
                       />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Image URL"
-                      value={newProduct.image}
-                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                      required
-                    />
-                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={newProduct.is_active}
-                        onChange={(e) => setNewProduct({ ...newProduct, is_active: e.target.checked })}
-                      />
-                      Is Active
-                    </label>
-                    <div className="flex gap-2 mt-2">
-                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800">Save</button>
-                      <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-250">Cancel</button>
+
+                    {/* Promotions & Status */}
+                    <div className="space-y-3 pt-2 pb-4">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Promotions & Status</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={newProduct.is_deal_of_the_day}
+                              onChange={(e) => setNewProduct({ ...newProduct, is_deal_of_the_day: e.target.checked })}
+                              className="rounded border-gray-300 text-black focus:ring-black"
+                            />
+                            Deal of the Day
+                          </label>
+                          {newProduct.is_deal_of_the_day && (
+                            <div className="flex flex-col gap-1 mt-1">
+                              <label className="text-xs font-bold text-gray-500 uppercase">Deal Expires At</label>
+                              <input
+                                type="datetime-local"
+                                value={newProduct.deal_expires_at}
+                                onChange={(e) => setNewProduct({ ...newProduct, deal_expires_at: e.target.value })}
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-start">
+                          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={newProduct.is_active}
+                              onChange={(e) => setNewProduct({ ...newProduct, is_active: e.target.checked })}
+                              className="rounded border-gray-300 text-black focus:ring-black"
+                            />
+                            Is Active
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100 shrink-0">
+                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">Save Product</button>
+                      <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
                     </div>
                   </form>
                 </div>
@@ -599,47 +1020,229 @@ export default function AdminDashboard() {
 
             {isEditModalOpen && editingProduct && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100">
+                <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl flex flex-col gap-4 border border-gray-100 max-h-[90vh]">
                   <h3 className="font-serif text-xl text-black font-semibold">Edit Product</h3>
-                  <form onSubmit={handleEditProduct} className="flex flex-col gap-3">
-                    <input
-                      type="text"
-                      placeholder="Product Name"
-                      value={editingProduct.name}
-                      onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Price"
-                        value={editingProduct.price}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
-                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                        required
-                      />
-                      <input
-                        type="number"
-                        placeholder="Stock"
-                        value={editingProduct.stock}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
-                        className="w-1/2 px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none"
-                        required
+                  <form onSubmit={handleEditProduct} className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+                    {/* General Information */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">General Information</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Product ID</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. skin-serum"
+                            value={editingProduct.id}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 outline-none text-gray-500"
+                            disabled
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Product Name</label>
+                          <input
+                            type="text"
+                            placeholder="Product Name"
+                            value={editingProduct.name}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Slug</label>
+                          <input
+                            type="text"
+                            placeholder="Slug"
+                            value={editingProduct.slug}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, slug: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Category</label>
+                          <select
+                            value={editingProduct.category}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-black"
+                          >
+                            <option value="">Select Category</option>
+                            {categories.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Price"
+                            value={editingProduct.price}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Stock</label>
+                          <input
+                            type="number"
+                            placeholder="Stock"
+                            value={editingProduct.stock}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Image URL</label>
+                        <input
+                          type="text"
+                          placeholder="Image URL"
+                          value={editingProduct.image}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, image: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
+                        <textarea
+                          placeholder="Product Description"
+                          value={editingProduct.description}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black h-20 resize-y"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Ingredients</label>
+                        <textarea
+                          placeholder="Ingredients list"
+                          value={editingProduct.ingredients}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, ingredients: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black h-20 resize-y"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Skincare Specifications */}
+                    <div className="space-y-3 pt-2">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Skincare Specifications</h4>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <ListInput
+                          label="Skin Concerns"
+                          items={editingProduct.skin_concerns}
+                          onChange={(vals) => setEditingProduct({ ...editingProduct, skin_concerns: vals })}
+                        />
+                        <ListInput
+                          label="Key Ingredients"
+                          items={editingProduct.key_ingredients}
+                          onChange={(vals) => setEditingProduct({ ...editingProduct, key_ingredients: vals })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <ListInput
+                          label="Skin Types"
+                          items={editingProduct.skin_types}
+                          onChange={(vals) => setEditingProduct({ ...editingProduct, skin_types: vals })}
+                        />
+                        <ListInput
+                          label="Application Steps"
+                          items={editingProduct.application_steps}
+                          onChange={(vals) => setEditingProduct({ ...editingProduct, application_steps: vals })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Makeup Specifications */}
+                    <div className="space-y-3 pt-2">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Makeup Specifications</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Finish</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Matte, Dewy"
+                            value={editingProduct.finish}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, finish: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Applicator</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Dropper, Brush"
+                            value={editingProduct.applicator}
+                            onChange={(e) => setEditingProduct({ ...editingProduct, applicator: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                          />
+                        </div>
+                      </div>
+                      <ListInput
+                        label="Shades (Hex Codes)"
+                        items={editingProduct.shades}
+                        onChange={(vals) => setEditingProduct({ ...editingProduct, shades: vals })}
+                        isColor={true}
                       />
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={editingProduct.is_active}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, is_active: e.target.checked })}
-                      />
-                      Is Active
-                    </label>
-                    <div className="flex gap-2 mt-2">
-                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800">Save</button>
-                      <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingProduct(null); }} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-250">Cancel</button>
+
+                    {/* Promotions & Status */}
+                    <div className="space-y-3 pt-2 pb-4">
+                      <h4 className="font-semibold text-gray-900 border-b border-gray-100 pb-1.5 text-sm">Promotions & Status</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={editingProduct.is_deal_of_the_day}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, is_deal_of_the_day: e.target.checked })}
+                              className="rounded border-gray-300 text-black focus:ring-black"
+                            />
+                            Deal of the Day
+                          </label>
+                          {editingProduct.is_deal_of_the_day && (
+                            <div className="flex flex-col gap-1 mt-1">
+                              <label className="text-xs font-bold text-gray-500 uppercase">Deal Expires At</label>
+                              <input
+                                type="datetime-local"
+                                value={editingProduct.deal_expires_at}
+                                onChange={(e) => setEditingProduct({ ...editingProduct, deal_expires_at: e.target.value })}
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-black"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-start">
+                          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={editingProduct.is_active}
+                              onChange={(e) => setEditingProduct({ ...editingProduct, is_active: e.target.checked })}
+                              className="rounded border-gray-300 text-black focus:ring-black"
+                            />
+                            Is Active
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100 shrink-0">
+                      <button type="submit" className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">Save Product</button>
+                      <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingProduct(null); }} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
                     </div>
                   </form>
                 </div>
@@ -689,12 +1292,39 @@ export default function AdminDashboard() {
                         {expandedOrderId === o.id && (
                           <tr>
                             <td colSpan={6} className="bg-gray-50/50 p-6">
-                              <div className="flex flex-col md:flex-row justify-between gap-6 text-sm text-left">
-                                <div className="space-y-1">
+                              <div className="flex flex-col md:flex-row justify-between gap-8 text-sm text-left">
+                                <div className="space-y-1 shrink-0">
                                   <h4 className="font-bold text-gray-900 mb-2">Shipping Information</h4>
                                   <p className="text-gray-600 font-semibold">{o.shipping_name}</p>
                                   <p className="text-gray-600">{o.shipping_address}</p>
                                   <p className="text-gray-600">{o.shipping_city}, {o.shipping_postal_code}</p>
+                                </div>
+                                <div className="space-y-4 shrink-0 w-48">
+                                  <div>
+                                    <h4 className="font-bold text-gray-900 mb-2">Fulfillment Status</h4>
+                                    <select
+                                      value={o.status}
+                                      onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white outline-none focus:border-black font-semibold capitalize"
+                                    >
+                                      <option value="Pending">Pending</option>
+                                      <option value="Paid">Paid</option>
+                                      <option value="Shipped">Shipped</option>
+                                      <option value="Delivered">Delivered</option>
+                                      <option value="Failed">Failed</option>
+                                      <option value="Refunded">Refunded</option>
+                                    </select>
+                                  </div>
+                                  {o.status === "Paid" && (
+                                    <div>
+                                      <button
+                                        onClick={() => handleRefundOrder(o.id)}
+                                        className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors border border-red-200/50"
+                                      >
+                                        Refund Order
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex-1 md:max-w-md">
                                   <h4 className="font-bold text-gray-900 mb-2">Order Items</h4>
@@ -734,8 +1364,10 @@ export default function AdminDashboard() {
                       <th className="pb-4 font-medium">Username</th>
                       <th className="pb-4 font-medium">Email</th>
                       <th className="pb-4 font-medium">Role</th>
+                      <th className="pb-4 font-medium">Status</th>
                       <th className="pb-4 font-medium">Joined Date</th>
-                      <th className="pb-4 font-medium text-right">Last Login</th>
+                      <th className="pb-4 font-medium">Last Login</th>
+                      <th className="pb-4 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-sm">
@@ -748,9 +1380,34 @@ export default function AdminDashboard() {
                             {u.is_staff ? "Admin" : "Customer"}
                           </span>
                         </td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                            {u.is_active ? "Active" : "Blocked"}
+                          </span>
+                        </td>
                         <td className="py-4 text-gray-500">{new Date(u.date_joined).toLocaleDateString()}</td>
-                        <td className="py-4 text-right text-gray-500">
+                        <td className="py-4 text-gray-500">
                           {u.last_login ? new Date(u.last_login).toLocaleString() : "Never"}
+                        </td>
+                        <td className="py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleUserRole(u.id, u.is_staff)}
+                              className="text-xs font-semibold bg-gray-100 hover:bg-gray-250 text-gray-700 px-2.5 py-1.5 rounded-lg transition-colors border border-gray-200/40"
+                            >
+                              Toggle Admin
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserBlock(u.id, u.is_active)}
+                              className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border ${
+                                u.is_active
+                                  ? "bg-red-50 hover:bg-red-100 text-red-700 border-red-200/50"
+                                  : "bg-green-50 hover:bg-green-100 text-green-700 border-green-200/50"
+                              }`}
+                            >
+                              {u.is_active ? "Block" : "Unblock"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
