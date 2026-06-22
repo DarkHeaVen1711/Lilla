@@ -42,9 +42,9 @@ class OrderItemInline(admin.TabularInline):
  
  
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user_identifier', 'status', 'total_price', 'created_at')
-    list_filter = ('status', 'created_at')
-    search_fields = ('user_identifier', 'id')
+    list_display = ('id', 'user_identifier', 'status', 'shipment_status', 'carrier_name', 'tracking_number', 'estimated_delivery_date', 'total_price', 'created_at')
+    list_filter = ('status', 'shipment_status', 'created_at')
+    search_fields = ('user_identifier', 'id', 'tracking_number')
     readonly_fields = ('id', 'created_at')
     inlines = [OrderItemInline]
  
