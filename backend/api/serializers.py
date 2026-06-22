@@ -62,13 +62,18 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_postal_code', 'total_price', 'status', 'created_at', 'items', 'coupon_code', 'discount_amount']
+        fields = ['id', 'user', 'user_identifier', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_postal_code', 'total_price', 'status', 'created_at', 'items', 'coupon_code', 'discount_amount', 'currency']
         read_only_fields = ['id', 'user', 'status', 'created_at', 'discount_amount']
 
     def validate(self, attrs):
         items = attrs.get('items', [])
         if not items:
             raise serializers.ValidationError("Order must contain at least one item.")
+
+        from .views import get_exchange_rates
+        rates = get_exchange_rates()
+        currency = attrs.get('currency', 'USD')
+        rate = decimal.Decimal(str(rates.get(currency, 1.0)))
 
         calculated_subtotal = decimal.Decimal('0.00')
         from .models import Product
@@ -79,18 +84,18 @@ class OrderSerializer(serializers.ModelSerializer):
             except Product.DoesNotExist:
                 raise serializers.ValidationError(f"Product with ID '{product_id}' does not exist.")
 
-            db_price = product.price
+            expected_price = (product.price * rate).quantize(decimal.Decimal('0.01'))
             submitted_price = item.get('price')
-            if db_price != submitted_price:
+            if abs(expected_price - submitted_price) > decimal.Decimal('0.05'):
                 raise serializers.ValidationError(
-                    f"Price mismatch for product '{product.name}'. Submitted: {submitted_price}, DB: {db_price}."
+                    f"Price mismatch for product '{product.name}'. Submitted: {submitted_price}, Expected: {expected_price} ({currency})."
                 )
 
             quantity = item.get('quantity')
             if quantity <= 0:
                 raise serializers.ValidationError("Quantity must be greater than zero.")
 
-            calculated_subtotal += db_price * quantity
+            calculated_subtotal += expected_price * quantity
 
         # Validate Coupon
         coupon_code = attrs.get('coupon_code')
@@ -112,13 +117,20 @@ class OrderSerializer(serializers.ModelSerializer):
         discount = calculated_subtotal * (discount_percentage / decimal.Decimal('100.00'))
         discount = discount.quantize(decimal.Decimal('0.01'))
         
-        delivery_fee = decimal.Decimal('15.00')
+        # Delivery fee in submitted currency (15.00 base USD)
+        delivery_fee = (decimal.Decimal('15.00') * rate).quantize(decimal.Decimal('0.01'))
+        
+        # Free delivery threshold is $100 equivalent
+        subtotal_in_usd = calculated_subtotal / rate
+        if subtotal_in_usd > decimal.Decimal('100.00'):
+            delivery_fee = decimal.Decimal('0.00')
+
         calculated_total = calculated_subtotal - discount + delivery_fee
         
         submitted_total = attrs.get('total_price')
         if abs(submitted_total - calculated_total) > decimal.Decimal('0.05'):
             raise serializers.ValidationError(
-                f"Total price mismatch. Calculated: {calculated_total}, Submitted: {submitted_total}."
+                f"Total price mismatch. Calculated: {calculated_total}, Submitted: {submitted_total} ({currency})."
             )
 
         # Save calculations into validated data
