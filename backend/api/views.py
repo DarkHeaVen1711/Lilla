@@ -567,3 +567,93 @@ class CouponValidateView(APIView):
         except Coupon.DoesNotExist:
             return Response({'valid': False, 'message': 'Invalid coupon code.'}, status=status.HTTP_200_OK)
 
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        from django.db import models
+        paid_statuses = ['Paid', 'Shipped', 'Delivered']
+        paid_orders = Order.objects.filter(status__in=paid_statuses)
+        
+        gross_revenue = paid_orders.aggregate(sum=models.Sum('total_price'))['sum'] or 0.00
+        gross_revenue = float(gross_revenue)
+        
+        total_orders_count = Order.objects.count()
+        paid_orders_count = paid_orders.count()
+        
+        aov = 0.00
+        if paid_orders_count > 0:
+            aov = gross_revenue / paid_orders_count
+        
+        from django.db.models.functions import TruncDate
+        from django.db.models import Sum, Count, F
+        import datetime
+        
+        end_date = timezone.now().date()
+        start_date = end_date - datetime.timedelta(days=29)
+        
+        db_logs = paid_orders.filter(
+            created_at__date__range=[start_date, end_date]
+        ).annotate(
+            date_only=TruncDate('created_at')
+        ).values('date_only').annotate(
+            revenue=Sum('total_price'),
+            count=Count('id')
+        ).order_by('date_only')
+        
+        db_logs_map = {
+            log['date_only'].strftime('%Y-%m-%d'): {
+                'revenue': float(log['revenue'] or 0.00),
+                'count': log['count']
+            }
+            for log in db_logs if log['date_only']
+        }
+        
+        daily_logs = []
+        for i in range(30):
+            day = start_date + datetime.timedelta(days=i)
+            day_str = day.strftime('%Y-%m-%d')
+            stats = db_logs_map.get(day_str, {'revenue': 0.0, 'count': 0})
+            daily_logs.append({
+                'date': day_str,
+                'orders_count': stats['count'],
+                'revenue': stats['revenue']
+            })
+            
+        top_products_qs = OrderItem.objects.filter(
+            order__status__in=paid_statuses
+        ).values(
+            'product_id', 'product_name'
+        ).annotate(
+            units_sold=Sum('quantity'),
+            revenue=Sum(F('quantity') * F('price'))
+        ).order_by('-units_sold')[:5]
+        
+        top_products = [
+            {
+                'product_id': item['product_id'],
+                'product_name': item['product_name'],
+                'units_sold': item['units_sold'],
+                'revenue': float(item['revenue'] or 0.00)
+            }
+            for item in top_products_qs
+        ]
+        
+        low_stock_count = Product.objects.filter(stock__lt=10).count()
+        catalog_items_count = Product.objects.count()
+        total_users_count = User.objects.count()
+        
+        return Response({
+            'gross_revenue': gross_revenue,
+            'aov': aov,
+            'total_orders': total_orders_count,
+            'paid_orders': paid_orders_count,
+            'low_stock_count': low_stock_count,
+            'catalog_items_count': catalog_items_count,
+            'total_users_count': total_users_count,
+            'daily_logs': daily_logs,
+            'top_products': top_products
+        }, status=status.HTTP_200_OK)
+
+
