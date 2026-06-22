@@ -3,7 +3,29 @@
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
-import { LayoutDashboard, ShoppingBag, ShoppingCart, Users, Search, Trash2, Edit } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  ShoppingCart,
+  Users,
+  Search,
+  Trash2,
+  Edit,
+  DollarSign,
+  TrendingUp
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar
+} from "recharts";
 
 export default function AdminDashboard() {
   const user = useStore((s) => s.user);
@@ -13,6 +35,10 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -30,15 +56,26 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
+      setIsLoadingAnalytics(true);
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      
       const prodRes = await fetch(`${apiBase}/api/products/`);
-      setProducts(await prodRes.json());
-      const orderRes = await fetch(`${apiBase}/api/orders/`);
-      setOrders(await orderRes.json());
-      const userRes = await fetch(`${apiBase}/api/admin/users/`);
-      setUsers(await userRes.json());
+      if (prodRes.ok) setProducts(await prodRes.json());
+      
+      const orderRes = await fetch("/api/orders/");
+      if (orderRes.ok) setOrders(await orderRes.json());
+      
+      const userRes = await fetch("/api/admin/users/");
+      if (userRes.ok) setUsers(await userRes.json());
+
+      const analyticsRes = await fetch("/api/admin/analytics/");
+      if (analyticsRes.ok) {
+        setAnalytics(await analyticsRes.json());
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
+    } finally {
+      setIsLoadingAnalytics(false);
     }
   };
 
@@ -115,6 +152,10 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     if (!user || !user.isStaff) {
       router.push("/");
     } else {
@@ -169,21 +210,229 @@ export default function AdminDashboard() {
         {activeTab === "overview" && (
           <div className="flex flex-col gap-8">
             <h1 className="font-serif text-3xl text-black">Dashboard Overview</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
               {[
-                { title: "Catalog Items", val: products.length, icon: <ShoppingBag /> },
-                { title: "Low Stock Items", val: products.filter(p => p.stock < 10).length, icon: <ShoppingBag className="text-amber-500" /> },
-                { title: "Customer Orders", val: orders.length, icon: <ShoppingCart /> },
-                { title: "Registered Users", val: users.length, icon: <Users /> }
+                { title: "Gross Revenue", val: analytics ? `$${analytics.gross_revenue.toFixed(2)}` : "$0.00", icon: <DollarSign className="w-5 h-5 text-emerald-600" />, sub: "Paid orders total", isLoading: isLoadingAnalytics },
+                { title: "Average Order Value", val: analytics ? `$${analytics.aov.toFixed(2)}` : "$0.00", icon: <TrendingUp className="w-5 h-5 text-indigo-600" />, sub: "Revenue per paid order", isLoading: isLoadingAnalytics },
+                { title: "Catalog Items", val: products.length, icon: <ShoppingBag className="w-5 h-5 text-gray-700" />, sub: "Total products listed", isLoading: isLoadingAnalytics },
+                { title: "Low Stock Items", val: products.filter(p => p.stock < 10).length, icon: <ShoppingBag className="w-5 h-5 text-amber-500" />, sub: "Stock level < 10 units", isLoading: isLoadingAnalytics },
+                { title: "Customer Orders", val: orders.length, icon: <ShoppingCart className="w-5 h-5 text-gray-700" />, sub: "Total orders received", isLoading: isLoadingAnalytics },
+                { title: "Registered Users", val: users.length, icon: <Users className="w-5 h-5 text-gray-700" />, sub: "Total customer accounts", isLoading: isLoadingAnalytics }
               ].map((c, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900">{c.icon}</div>
+                <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-[125px] transition-all hover:shadow-md hover:border-gray-200/60">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider leading-none">{c.title}</p>
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">{c.icon}</div>
+                  </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{c.title}</p>
-                    <p className="text-xl font-bold text-gray-900 mt-1">{c.val}</p>
+                    {c.isLoading ? (
+                      <div className="h-6 w-20 bg-gray-100 animate-pulse rounded mt-2" />
+                    ) : (
+                      <p className="text-xl font-bold text-gray-900 mt-2 tracking-tight leading-none">{c.val}</p>
+                    )}
+                    <p className="text-[10px] text-gray-400 font-semibold mt-1.5">{c.sub}</p>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Revenue & Orders Trend Line/Area Chart */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div>
+                  <h3 className="font-serif text-lg text-black font-semibold">Revenue & Orders Trend</h3>
+                  <p className="text-xs text-gray-400 font-semibold mt-0.5">Performance tracking over the last 30 days</p>
+                </div>
+                <div className="h-[320px] w-full mt-2">
+                  {!isClient || !analytics ? (
+                    <div className="w-full h-full bg-gray-50 animate-pulse rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
+                      Loading trend metrics...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={analytics.daily_logs}
+                        margin={{ top: 10, right: 5, left: -20, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#18181B" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#18181B" stopOpacity={0.01}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#9CA3AF"
+                          fontSize={10}
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
+                          dy={10}
+                          tickFormatter={(str) => {
+                            try {
+                              const parts = str.split('-');
+                              if (parts.length === 3) {
+                                const date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+                                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                              }
+                              return str;
+                            } catch {
+                              return str;
+                            }
+                          }}
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          stroke="#9CA3AF"
+                          fontSize={10}
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(v) => `$${v}`}
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#9CA3AF"
+                          fontSize={10}
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
+                          dx={10}
+                          tickFormatter={(v) => Math.round(v).toString()}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: "rgba(255, 255, 255, 0.96)",
+                            border: "1px solid #E5E7EB",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "#1F2937"
+                          }}
+                          labelFormatter={(str) => {
+                            try {
+                              const parts = str.split('-');
+                              if (parts.length === 3) {
+                                const date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+                                return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+                              }
+                              return str;
+                            } catch {
+                              return str;
+                            }
+                          }}
+                        />
+                        <Area
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="revenue"
+                          name="Revenue"
+                          stroke="#18181B"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorRevenue)"
+                        />
+                        <Area
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="orders_count"
+                          name="Orders"
+                          stroke="#F43F5E"
+                          strokeWidth={1.5}
+                          strokeDasharray="4 4"
+                          fill="none"
+                        />
+                        <Legend
+                          verticalAlign="top"
+                          height={36}
+                          iconType="circle"
+                          iconSize={8}
+                          wrapperStyle={{ fontSize: '10px', fontWeight: 600, paddingBottom: '10px' }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Selling Products Bar Chart */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div>
+                  <h3 className="font-serif text-lg text-black font-semibold">Top-Selling Products</h3>
+                  <p className="text-xs text-gray-400 font-semibold mt-0.5">Best performing items by units sold</p>
+                </div>
+                <div className="h-[320px] w-full mt-2">
+                  {!isClient || !analytics ? (
+                    <div className="w-full h-full bg-gray-50 animate-pulse rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
+                      Loading product aggregates...
+                    </div>
+                  ) : analytics.top_products.length === 0 ? (
+                    <div className="w-full h-full rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold border border-dashed border-gray-100">
+                      No sales data available yet
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={analytics.top_products}
+                        layout="vertical"
+                        margin={{ top: 5, right: 5, left: 10, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F3F4F6" />
+                        <XAxis
+                          type="number"
+                          stroke="#9CA3AF"
+                          fontSize={10}
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
+                          dy={5}
+                          tickFormatter={(v) => Math.round(v).toString()}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="product_name"
+                          stroke="#4B5563"
+                          fontSize={10}
+                          fontWeight={600}
+                          tickLine={false}
+                          axisLine={false}
+                          width={110}
+                          tickFormatter={(str) => str.length > 18 ? `${str.substring(0, 16)}...` : str}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: "rgba(255, 255, 255, 0.96)",
+                            border: "1px solid #E5E7EB",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "#1F2937"
+                          }}
+                          formatter={(value, name) => {
+                            if (name === "units_sold") return [value, "Units Sold"];
+                            if (name === "revenue") return [`$${Number(value).toFixed(2)}`, "Revenue"];
+                            return [value, name];
+                          }}
+                        />
+                        <Bar
+                          dataKey="units_sold"
+                          name="Units Sold"
+                          fill="#18181B"
+                          radius={[0, 6, 6, 0]}
+                          barSize={15}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
