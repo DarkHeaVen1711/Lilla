@@ -565,6 +565,62 @@ class AdminUserListView(generics.ListAPIView):
     serializer_class = AdminUserSerializer
 
 
+class AdminUserUpdateView(APIView):
+    """Admin endpoint to toggle user roles and account status."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, id, *args, **kwargs):
+        target_user = get_object_or_404(User, id=id)
+
+        # Prevent self-demotion
+        if target_user.id == request.user.id:
+            return Response(
+                {"error": "You cannot modify your own account via this endpoint."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        updated_fields = []
+
+        if 'is_staff' in request.data:
+            target_user.is_staff = bool(request.data['is_staff'])
+            updated_fields.append('is_staff')
+
+        if 'is_active' in request.data:
+            target_user.is_active = bool(request.data['is_active'])
+            updated_fields.append('is_active')
+
+        if not updated_fields:
+            return Response(
+                {"error": "No valid fields provided. Use 'is_staff' or 'is_active'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_user.save(update_fields=updated_fields)
+
+        security_logger.info(
+            f"Admin {request.user.username} updated user {target_user.username}: {updated_fields}",
+            extra={'context': {
+                'admin_user': request.user.username,
+                'target_user': target_user.username,
+                'target_user_id': target_user.id,
+                'updated_fields': updated_fields,
+                'is_staff': target_user.is_staff,
+                'is_active': target_user.is_active
+            }}
+        )
+
+        return Response({
+            "status": "success",
+            "user": {
+                "id": target_user.id,
+                "username": target_user.username,
+                "email": target_user.email,
+                "is_staff": target_user.is_staff,
+                "is_active": target_user.is_active,
+            }
+        }, status=status.HTTP_200_OK)
+
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 

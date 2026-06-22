@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, FavoriteViewSet, AddressViewSet,
+    RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
     CouponValidateView, AdminAnalyticsView, StockAdjustmentListView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
@@ -22,6 +22,7 @@ urlpatterns = [
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:id>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
     path('admin/stock-adjustments/', StockAdjustmentListView.as_view(), name='admin-stock-adjustments'),
     path('payments/create-intent/', CreatePaymentIntentView.as_view(), name='payments-create-intent'),
