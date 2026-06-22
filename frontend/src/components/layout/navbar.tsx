@@ -10,6 +10,7 @@ import { m as motion, AnimatePresence } from "framer-motion";
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
 import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
+import { Price } from "@/components/shared/Price";
 import logo from "@/images/logo.png";
 import beautyLogo from "@/images/beauty.png";
 import type { HomeSectionLink } from "@/lib/homepageData";
@@ -428,7 +429,7 @@ export function Navbar({ links }: NavbarProps) {
                             </button>
                           </div>
                           <div className="mt-2 flex items-center gap-4">
-                            <span className="font-semibold text-base">${item.price}</span>
+                            <Price amount={item.price} className="font-semibold text-base" />
                             <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5">
                               <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-5 text-center text-gray-500 hover:text-black font-medium leading-none pb-[2px]">-</button>
                               <span className="w-4 text-center text-sm font-semibold">{item.quantity}</span>
@@ -447,7 +448,7 @@ export function Navbar({ links }: NavbarProps) {
                   
                   <div className="border-t border-gray-100 pt-4 mb-4 flex justify-between items-center">
                     <span className="text-sm text-gray-600 font-medium">Subtotal</span>
-                    <span className="font-bold text-[18px] text-black">${cartTotal.toFixed(2)}</span>
+                    <Price amount={cartTotal} className="font-bold text-[18px] text-black" />
                   </div>
                 </>
               )}
@@ -590,9 +591,9 @@ export function Navbar({ links }: NavbarProps) {
                           <p className="text-[11px] text-gray-500 font-medium mt-0.5">{prod.category}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <span className="text-sm font-bold text-black">${prod.price}</span>
+                          <Price amount={prod.price} className="text-sm font-bold text-black" />
                           {prod.originalPrice && (
-                            <span className="text-[11px] text-gray-400 font-medium line-through block decoration-1">${prod.originalPrice}</span>
+                            <Price amount={prod.originalPrice} className="text-[11px] text-gray-400 font-medium line-through block decoration-1" />
                           )}
                         </div>
                       </Link>
