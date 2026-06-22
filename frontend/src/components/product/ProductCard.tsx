@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star, Heart } from "lucide-react";
+import { Star, Heart, GitCompare } from "lucide-react";
 import { toast } from "sonner";
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
@@ -34,6 +34,11 @@ export function ProductCard({ product = FALLBACK_PRODUCT, priority = false }: Pr
   const withAuthGate = useAuthGate();
   const favorite = isFavorite(product.id);
 
+  const compareProducts = useStore((s) => s.compareProducts);
+  const addToCompare = useStore((s) => s.addToCompare);
+  const removeFromCompare = useStore((s) => s.removeFromCompare);
+  const isCompared = compareProducts.some((p) => p.id === product.id);
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -61,6 +66,17 @@ export function ProductCard({ product = FALLBACK_PRODUCT, priority = false }: Pr
         });
       }
     );
+  };
+
+  const handleToggleCompare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isCompared) {
+      removeFromCompare(product.id);
+      toast.success("Removed from comparison list.", { description: product.name });
+    } else {
+      addToCompare(product);
+    }
   };
 
   return (
@@ -94,6 +110,19 @@ export function ProductCard({ product = FALLBACK_PRODUCT, priority = false }: Pr
           <Heart className={`h-4 w-4 transition-colors ${
             favorite ? "fill-brand-secondary text-brand-secondary" : "text-black/60 hover:text-black"
           }`} />
+        </button>
+
+        {/* Compare Button */}
+        <button
+          type="button"
+          onClick={handleToggleCompare}
+          className={`absolute top-14 right-4 z-20 w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform backdrop-blur transition-all duration-200 ${
+            isCompared ? "bg-[#B58B5E] text-white" : "bg-white/95 text-black/60 hover:text-black"
+          }`}
+          aria-label="Add to compare"
+          title="Compare Product"
+        >
+          <GitCompare className="h-4 w-4" />
         </button>
       </Link>
 
