@@ -124,12 +124,24 @@ class Order(SyncableModel):
     payment_intent_id = models.CharField(max_length=255, blank=True, null=True)
     currency = models.CharField(max_length=10, default="USD")
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Tracking / Shipment Fields
+    carrier_name = models.CharField(max_length=100, blank=True, null=True, default="DHL Express")
+    tracking_number = models.CharField(max_length=100, blank=True, null=True)
+    estimated_delivery_date = models.DateField(blank=True, null=True)
+    shipment_status = models.CharField(max_length=50, default="Placed", db_index=True)  # Placed, Processed, Shipped, Out for Delivery, Delivered
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._original_status = self.status
 
     def save(self, *args, **kwargs):
+        if not self.tracking_number:
+            import uuid
+            self.tracking_number = f"LILLA-US-{uuid.uuid4().hex[:8].upper()}"
+        if not self.estimated_delivery_date:
+            from datetime import timedelta, date
+            self.estimated_delivery_date = date.today() + timedelta(days=4)
         super().save(*args, **kwargs)
         self._original_status = self.status
 
