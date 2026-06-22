@@ -22,7 +22,8 @@ export interface LineItem {
 }
 
 export interface ProfileFields {
-  name?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   phone?: string;
 }
@@ -62,7 +63,8 @@ export interface AddressData {
 interface LillaStore {
   // User Session
   user: UserState | null;
-  loginUser: (identityString: string, isStaff: boolean) => void;
+  loginUser: (identityString: string, isStaff: boolean, metadata?: ProfileFields) => void;
+  updateUserMetadata: (metadata: Partial<ProfileFields>) => void;
   logoutUser: () => void;
 
   // Auth Modal State Machine
@@ -150,17 +152,28 @@ export const useStore = create<LillaStore>()(
       // ── User ──────────────────────────────────────────────────────────────
       user: null,
 
-      loginUser: (identityString, isStaff) => {
+      loginUser: (identityString, isStaff, metadata) => {
         set({
           user: {
             token: "",
             identityString,
             isGuest: false,
             isStaff: !!isStaff,
-            metadata: {},
+            metadata: metadata || {},
           },
         });
       },
+
+      updateUserMetadata: (metadata) =>
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              metadata: { ...state.user.metadata, ...metadata },
+            },
+          };
+        }),
 
       logoutUser: () => set({ user: null }),
 

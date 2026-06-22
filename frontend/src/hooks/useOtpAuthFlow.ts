@@ -107,7 +107,7 @@ export function useOtpAuthFlow() {
       }
 
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
-      loginUser(finalAuthMethod, !!data.user?.is_staff);
+      loginUser(finalAuthMethod, !!data.user?.is_staff, { email: data.user?.email || "" });
       onSuccess();
       return true;
     } catch (err: any) {
