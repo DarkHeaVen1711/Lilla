@@ -57,3 +57,54 @@ class AccountPersistenceTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn('access', res.json())
 
+    def test_profile_unauthorized(self):
+        res = self.client.get(reverse('auth-profile'))
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_crud(self):
+        self.client.force_authenticate(user=self.u1)
+        res = self.client.get(reverse('auth-profile'))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.json()['email'], self.u1.email)
+
+        # Update profile
+        update_data = {
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'email': 'john.doe@example.com'
+        }
+        res = self.client.patch(reverse('auth-profile'), update_data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.json()['first_name'], 'John')
+        self.assertEqual(res.json()['last_name'], 'Doe')
+        self.assertEqual(res.json()['email'], 'john.doe@example.com')
+
+        # Check in DB
+        self.u1.refresh_from_db()
+        self.assertEqual(self.u1.first_name, 'John')
+        self.assertEqual(self.u1.last_name, 'Doe')
+        self.assertEqual(self.u1.email, 'john.doe@example.com')
+
+    def test_profile_username_sync(self):
+        # Create user where username is an email address
+        email_user = User.objects.create_user(username="test@lilla.com", password="pw", email="test@lilla.com")
+        self.client.force_authenticate(user=email_user)
+        
+        res = self.client.patch(reverse('auth-profile'), {'email': 'new@lilla.com'})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        
+        email_user.refresh_from_db()
+        self.assertEqual(email_user.email, 'new@lilla.com')
+        self.assertEqual(email_user.username, 'new@lilla.com')
+
+    def test_profile_email_conflict(self):
+        self.client.force_authenticate(user=self.u1)
+        # u2's username is 'u2'. Let's give u2 an email
+        self.u2.email = 'taken@lilla.com'
+        self.u2.save()
+
+        res = self.client.patch(reverse('auth-profile'), {'email': 'taken@lilla.com'})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', res.json())
+
+
