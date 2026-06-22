@@ -300,3 +300,70 @@ class StripePaymentsTests(APITestCase):
         response = self.client.post(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("No payment intent ID associated", response.data["error"])
+
+
+@override_settings(CACHES={
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'integration-test-cache-currency',
+    }
+})
+class CurrencyAndMultiCurrencyCheckoutTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        cache.set("currency_rates", {
+            "USD": 1.0,
+            "EUR": 0.92,
+            "GBP": 0.78,
+            "INR": 83.50
+        }, timeout=86400)
+        self.category = Category.objects.create(name="Premium Skincare", slug="skincare")
+        self.product = Product.objects.create(
+            id="lilla-glow-oil",
+            slug="lilla-glow-oil",
+            name="Glow Oil",
+            price=25.00,
+            category=self.category,
+            stock=5,
+            is_active=True
+        )
+
+    def test_get_currency_rates(self):
+        url = reverse('currency-rates')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["base"], "USD")
+        self.assertIn("EUR", response.data["rates"])
+        self.assertIn("INR", response.data["rates"])
+
+    def test_multicurrency_checkout_success(self):
+        user = User.objects.create_user(username="test_currency@lilla.com")
+        self.client.force_authenticate(user=user)
+
+        # EUR rate fallback is 0.92
+        # Product price is 25.00 USD -> 25.00 * 0.92 = 23.00 EUR
+        # Delivery fee is 15.00 USD -> 15.00 * 0.92 = 13.80 EUR
+        # Calculated total for 1 item: 23.00 + 13.80 = 36.80 EUR
+        payload = {
+            "user_identifier": "test_currency@lilla.com",
+            "shipping_name": "Jane Doe",
+            "shipping_address": "123 Lilla Lane",
+            "shipping_city": "Paris",
+            "shipping_postal_code": "75001",
+            "total_price": "36.80",
+            "currency": "EUR",
+            "items": [
+                {
+                    "product_id": "lilla-glow-oil",
+                    "product_name": "Glow Oil",
+                    "price": "23.00",
+                    "quantity": 1
+                }
+            ]
+        }
+        url = reverse('order-create')
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["currency"], "EUR")
+        self.assertEqual(response.data["total_price"], "36.80")
+
