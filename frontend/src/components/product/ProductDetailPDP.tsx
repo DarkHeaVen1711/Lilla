@@ -40,6 +40,39 @@ import social4 from "@/images/github.png";
 // Flower and blush smudge decorative assets
 import imgYoumightlikeBlush from "@/images/youmightlike_blush.png";
 
+const getImgSrc = (img: any) => {
+  if (!img) return "";
+  if (typeof img === "string") return img;
+  return img.src || "";
+};
+
+const staticFallbackReviews = [
+  {
+    id: 1,
+    author: "Guy Hawkins",
+    date: "02 Jan",
+    rating: 5,
+    content: "Its very nice, worth every penny! This is a game changer! Give natural and long lasting glow. Go ahead and buy it you won't regret it.",
+    avatar: imgCustomer1,
+  },
+  {
+    id: 2,
+    author: "Kristin Watson",
+    date: "28 Dec",
+    rating: 5,
+    content: "Absolutely love the texture and buildability. Perfect for daily wear, feels so lightweight on the skin.",
+    avatar: imgCustomer2,
+  },
+  {
+    id: 3,
+    author: "Albert Flores",
+    date: "15 Dec",
+    rating: 4,
+    content: "Great product, smudge-proof formulation as described. Lasts all day without fading. Highly recommend for oily skin types.",
+    avatar: imgCustomer3,
+  },
+];
+
 type ProductDetailPDPProps = {
   product: any;
   recommendedProducts: CommerceProduct[];
@@ -64,6 +97,8 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
+  const [newImagesText, setNewImagesText] = useState("");
+  const [selectedStarFilter, setSelectedStarFilter] = useState<number | null>(null);
 
   const fetchReviews = async () => {
     try {
@@ -95,16 +130,24 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
       return;
     }
     setIsSubmittingReview(true);
+    
+    // Parse image URLs
+    const imagesList = newImagesText
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+
     try {
       const res = await fetch(`/api/products/${initialProduct.slug}/reviews/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating: newRating, comment: newComment }),
+        body: JSON.stringify({ rating: newRating, comment: newComment, images: imagesList }),
       });
       const data = await res.json();
       if (res.ok) {
         toast.success("Review submitted successfully!");
         setNewComment("");
+        setNewImagesText("");
         setNewRating(5);
         fetchReviews();
       } else {
@@ -116,6 +159,30 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
       toast.error("Failed to submit review.");
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  const handleVoteHelpful = async (reviewId: number) => {
+    if (!user) {
+      toast.error("Please sign in to vote helpfulness.");
+      useStore.getState().openAuthModal("PHONE_INPUT");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}/helpful/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Feedback updated.");
+        fetchReviews();
+      } else {
+        toast.error(data.detail || data.error || "Failed to submit feedback.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit feedback.");
     }
   };
 
@@ -136,7 +203,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
       { star: 1, weight: `${Math.round((counts[1] / total) * 100)}%` },
     ];
   }, [reviewsList]);
-  
+
   // Reconstruct OOP class instance from plain serialized props
   const product = useMemo(() => {
     return initialProduct.category?.toLowerCase() === "makeup"
@@ -171,6 +238,44 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
 
   // Main Product Image Lightbox Modal
   const [isMainLightboxOpen, setIsMainLightboxOpen] = useState(false);
+
+  const filteredReviews = useMemo(() => {
+    if (selectedStarFilter === null) return reviewsList;
+    return reviewsList.filter((r) => Math.round(r.rating) === selectedStarFilter);
+  }, [reviewsList, selectedStarFilter]);
+
+  const customerPhotos = useMemo(() => {
+    const list: { src: any; review: any }[] = [];
+    
+    // Add images from actual reviews
+    reviewsList.forEach((r) => {
+      if (r.images && Array.isArray(r.images)) {
+        r.images.forEach((imgUrl: string) => {
+          list.push({ src: imgUrl, review: r });
+        });
+      }
+    });
+
+    // Add static ones as default/fallback
+    const staticPhotos = [
+      { src: imgCustomer1, review: staticFallbackReviews[0] },
+      { src: imgCustomer2, review: staticFallbackReviews[1] },
+      { src: imgCustomer3, review: staticFallbackReviews[2] },
+      { src: imgCustomer4, review: staticFallbackReviews[0] },
+      { src: imgCustomer5, review: staticFallbackReviews[1] },
+    ];
+    
+    list.push(...staticPhotos);
+    return list;
+  }, [reviewsList]);
+
+  const activeLightboxReview = useMemo(() => {
+    if (!lightboxReview) return null;
+    if (lightboxReview.id) {
+      return reviewsList.find((r) => r.id === lightboxReview.id) || lightboxReview;
+    }
+    return lightboxReview;
+  }, [reviewsList, lightboxReview]);
 
   // Swiper refs
   const prevRef = useRef<HTMLButtonElement>(null);
@@ -294,32 +399,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const skincareProduct = isSkincare ? (product as SkincareProduct) : null;
 
   // Local reviews array
-  const reviews = [
-    {
-      id: 1,
-      author: "Guy Hawkins",
-      date: "02 Jan",
-      rating: 5,
-      content: "Its very nice, worth every penny! This is a game changer! Give natural and long lasting glow. Go ahead and buy it you won't regret it.",
-      avatar: imgCustomer1,
-    },
-    {
-      id: 2,
-      author: "Kristin Watson",
-      date: "28 Dec",
-      rating: 5,
-      content: "Absolutely love the texture and buildability. Perfect for daily wear, feels so lightweight on the skin.",
-      avatar: imgCustomer2,
-    },
-    {
-      id: 3,
-      author: "Albert Flores",
-      date: "15 Dec",
-      rating: 4,
-      content: "Great product, smudge-proof formulation as described. Lasts all day without fading. Highly recommend for oily skin types.",
-      avatar: imgCustomer3,
-    },
-  ];
+  const reviews = staticFallbackReviews;
 
   const handleZipChange = (e: React.FormEvent) => {
     e.preventDefault();
@@ -947,14 +1027,21 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
             {/* Star Distribution Rows */}
             <div className="flex flex-col gap-3 font-semibold text-base">
               {starDistribution.map((row) => (
-                <div key={row.star} className="flex items-center gap-4">
+                <button
+                  key={row.star}
+                  type="button"
+                  onClick={() => setSelectedStarFilter(selectedStarFilter === row.star ? null : row.star)}
+                  className={`flex items-center gap-4 w-full text-left p-1.5 rounded-lg hover:bg-gray-100/80 transition-colors ${
+                    selectedStarFilter === row.star ? "bg-gray-200/60 ring-1 ring-black/10" : ""
+                  }`}
+                >
                   <span className="w-3 text-right">{row.star}</span>
                   <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500 shrink-0" />
                   <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-black rounded-full" style={{ width: row.weight }}></div>
                   </div>
                   <span className="w-10 text-right text-sm text-gray-500">{row.weight}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -965,19 +1052,20 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
             <div className="flex flex-col gap-4">
               <h3 className="text-3xl font-bold">Customer Photos</h3>
               <div className="flex flex-wrap items-center gap-3">
-                {[imgCustomer1, imgCustomer2, imgCustomer3, imgCustomer4, imgCustomer5].map((img, idx) => (
+                {customerPhotos.slice(0, 6).map((photo, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => {
-                      setLightboxImage(img);
-                      setLightboxReview(reviews[idx % reviews.length]);
+                      setLightboxImage(photo.src);
+                      setLightboxReview(photo.review);
                     }}
                     className="relative w-20 h-20 bg-gray-100 rounded-xl overflow-hidden hover:opacity-90 active:scale-95 transition-all border border-gray-100"
                   >
-                    <Image src={img} alt={`Customer Photo ${idx + 1}`} fill className="object-cover" />
-                    {idx === 4 && (
+                    <img src={getImgSrc(photo.src)} alt={`Customer Photo ${idx + 1}`} className="object-cover w-full h-full" />
+                    {idx === 5 && customerPhotos.length > 6 && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-sm font-bold">
-                        +10 More
+                        +{customerPhotos.length - 6} More
                       </div>
                     )}
                   </button>
@@ -1010,6 +1098,18 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                   placeholder="Share your thoughts about this product..."
                   className="w-full min-h-[100px] p-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-black text-black font-semibold text-base mb-4 resize-none"
                 />
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                    Add Photos (Optional comma-separated image URLs)
+                  </label>
+                  <input
+                    type="text"
+                    value={newImagesText}
+                    onChange={(e) => setNewImagesText(e.target.value)}
+                    placeholder="e.g. https://example.com/pic1.jpg, https://example.com/pic2.jpg"
+                    className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-black text-black font-semibold text-base"
+                  />
+                </div>
                 <button
                   onClick={handleSubmitReview}
                   disabled={isSubmittingReview}
@@ -1032,12 +1132,32 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               </div>
             )}
 
+            {/* Active Star Filter Indicator */}
+            {selectedStarFilter !== null && (
+              <div className="flex items-center justify-between bg-gray-100 px-4 py-2.5 rounded-xl border border-gray-200 mb-6">
+                <span className="text-sm font-semibold text-gray-700">
+                  Showing only {selectedStarFilter}-star reviews ({filteredReviews.length} found)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStarFilter(null)}
+                  className="text-xs font-bold text-black underline hover:no-underline"
+                >
+                  Clear Filter
+                </button>
+              </div>
+            )}
+
             {/* Individual Review Row Components */}
             <div className="flex flex-col gap-6 divide-y divide-gray-100">
-              {reviewsList.length === 0 ? (
-                <p className="text-gray-500 font-semibold italic text-lg py-4">No reviews yet. Be the first to review this product!</p>
+              {filteredReviews.length === 0 ? (
+                <p className="text-gray-500 font-semibold italic text-lg py-4">
+                  {selectedStarFilter !== null
+                    ? `No ${selectedStarFilter}-star reviews found.`
+                    : "No reviews yet. Be the first to review this product!"}
+                </p>
               ) : (
-                reviewsList.map((rev) => (
+                filteredReviews.map((rev) => (
                   <div key={rev.id} className="pt-6 first:pt-0 flex gap-4">
                     {/* Reviewer Initials Avatar */}
                     <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-700 font-bold shrink-0 text-lg uppercase">
@@ -1064,6 +1184,38 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                       <p className="text-gray-600 leading-relaxed text-lg md:text-xl pr-4">
                         "{rev.comment}"
                       </p>
+
+                      {/* Review Images */}
+                      {rev.images && rev.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {rev.images.map((imgUrl: string, imgIdx: number) => (
+                            <button
+                              key={imgIdx}
+                              type="button"
+                              onClick={() => {
+                                setLightboxImage(imgUrl);
+                                setLightboxReview(rev);
+                              }}
+                              className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 active:scale-95 transition-all border border-gray-100"
+                            >
+                              <img src={getImgSrc(imgUrl)} alt={`Review photo ${imgIdx + 1}`} className="object-cover w-full h-full" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Helpfulness upvote button */}
+                      <div className="flex items-center gap-4 mt-4 pt-2 border-t border-gray-50/50">
+                        <button
+                          type="button"
+                          onClick={() => handleVoteHelpful(rev.id)}
+                          className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-black hover:text-white rounded-full transition-all duration-200"
+                        >
+                          <span>Helpful</span>
+                          <span className="opacity-60">|</span>
+                          <span>{rev.helpful_votes || 0}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1095,7 +1247,7 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
 
             {/* Left Side: Photo */}
             <div className="relative aspect-square w-full bg-brand-bg-image md:h-full mix-blend-multiply">
-              <Image src={lightboxImage} alt="Customer Review Photo" fill className="object-cover" />
+              <img src={getImgSrc(lightboxImage)} alt="Customer Review Photo" className="object-cover w-full h-full" />
             </div>
 
             {/* Right Side: Review Detail */}
@@ -1103,10 +1255,10 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-xl text-black">
-                    {lightboxReview ? lightboxReview.author : "John Doe"}
+                    {activeLightboxReview ? activeLightboxReview.user_name || activeLightboxReview.author : "John Doe"}
                   </h4>
                   <span className="text-gray-400 text-sm">
-                    {lightboxReview ? lightboxReview.date : "02 Jan"}
+                    {activeLightboxReview ? (activeLightboxReview.created_at ? new Date(activeLightboxReview.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : activeLightboxReview.date) : "02 Jan"}
                   </span>
                 </div>
                 
@@ -1114,18 +1266,20 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-5 h-5 ${i < (lightboxReview ? lightboxReview.rating : 5) ? "fill-current" : "text-gray-200"}`}
+                      className={`w-5 h-5 ${i < (activeLightboxReview ? activeLightboxReview.rating : 5) ? "fill-current" : "text-gray-200"}`}
                     />
                   ))}
                 </div>
 
                 <div className="border-t border-gray-100 pt-4 mt-2">
                   <p className="text-lg font-serif italic text-black leading-snug mb-3">
-                    "{lightboxReview ? lightboxReview.content : "Its very nice, worth every penny! This is a game changer! Give natural and long lasting glow."}"
+                    "{activeLightboxReview ? activeLightboxReview.comment || activeLightboxReview.content : "Its very nice, worth every penny! This is a game changer! Give natural and long lasting glow."}"
                   </p>
-                  <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                    This is a game changer! Gives natural and long lasting glow. Go ahead and buy it, you won't regret it. Verified buyer reviews provide absolute confirmation.
-                  </p>
+                  {!activeLightboxReview?.comment && (
+                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                      This is a game changer! Gives natural and long lasting glow. Go ahead and buy it, you won't regret it. Verified buyer reviews provide absolute confirmation.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1133,10 +1287,17 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
               <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
                 <span className="text-xs font-bold text-gray-400">WAS THIS REVIEW HELPFUL?</span>
                 <button
-                  onClick={() => alert("Thank you for your feedback!")}
+                  type="button"
+                  onClick={() => {
+                    if (activeLightboxReview && activeLightboxReview.id) {
+                      handleVoteHelpful(activeLightboxReview.id);
+                    } else {
+                      alert("Thank you for your feedback!");
+                    }
+                  }}
                   className="flex items-center gap-2 text-sm font-bold text-black border border-black/25 rounded-full px-5 py-2 hover:bg-black hover:text-white transition-colors"
                 >
-                  Helpful | 5
+                  Helpful | {activeLightboxReview ? activeLightboxReview.helpful_votes || 0 : 5}
                 </button>
               </div>
             </div>
