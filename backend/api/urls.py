@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, AdminUserListView, FavoriteViewSet, AddressViewSet,
+    RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, FavoriteViewSet, AddressViewSet,
     CouponValidateView, AdminAnalyticsView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
@@ -28,6 +28,7 @@ urlpatterns = [
     path('orders/', OrderCreateView.as_view(), name='order-create'),
     path('orders/<uuid:id>/', OrderDetailView.as_view(), name='order-detail'),
     path('orders/<uuid:id>/refund/', OrderRefundView.as_view(), name='order-refund'),
+    path('admin/orders/<uuid:id>/status/', OrderStatusUpdateView.as_view(), name='order-status-update'),
     path('coupons/validate/', CouponValidateView.as_view(), name='coupons-validate'),
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
     path('catalog/active-combos/', ActiveCombosListView.as_view(), name='catalog-active-combos'),

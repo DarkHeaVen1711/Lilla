@@ -490,6 +490,67 @@ class OrderRefundView(APIView):
             )
 
 
+class OrderStatusUpdateView(APIView):
+    """Admin endpoint to update order fulfillment status."""
+    permission_classes = [IsAdminUser]
+
+    # Define allowed status transitions as a directed graph
+    ALLOWED_TRANSITIONS = {
+        'Pending': ['Paid', 'Failed'],
+        'Paid': ['Shipped', 'Refunded'],
+        'Shipped': ['Delivered'],
+        'Delivered': [],
+        'Failed': ['Pending'],
+        'Refunded': [],
+    }
+
+    def patch(self, request, id, *args, **kwargs):
+        order = get_object_or_404(Order, id=id)
+        new_status = request.data.get('status')
+
+        if not new_status:
+            return Response(
+                {"error": "Missing 'status' field in request body."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        current_status = order.status
+        allowed = self.ALLOWED_TRANSITIONS.get(current_status, [])
+
+        if new_status not in allowed:
+            return Response(
+                {
+                    "error": f"Invalid transition from '{current_status}' to '{new_status}'.",
+                    "allowed_transitions": allowed
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = order.status
+        order.status = new_status
+        order.save()
+
+        transaction_logger.info(
+            f"Order {order.id} status updated: {old_status} -> {new_status}",
+            extra={'context': {
+                'order_id': str(order.id),
+                'old_status': old_status,
+                'new_status': new_status,
+                'updated_by': request.user.username
+            }}
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "order_id": str(order.id),
+                "old_status": old_status,
+                "new_status": new_status
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 from rest_framework import serializers
 
 class AdminUserSerializer(serializers.ModelSerializer):
