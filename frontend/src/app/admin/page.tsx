@@ -275,6 +275,45 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        alert("Order status updated successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update status: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleRefundOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to refund this order? This will process a Stripe refund and set status to Refunded.")) return;
+    try {
+      const res = await fetch(`/api/orders/${orderId}/refund/`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        alert("Order refunded successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to refund order: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -1146,12 +1185,39 @@ export default function AdminDashboard() {
                         {expandedOrderId === o.id && (
                           <tr>
                             <td colSpan={6} className="bg-gray-50/50 p-6">
-                              <div className="flex flex-col md:flex-row justify-between gap-6 text-sm text-left">
-                                <div className="space-y-1">
+                              <div className="flex flex-col md:flex-row justify-between gap-8 text-sm text-left">
+                                <div className="space-y-1 shrink-0">
                                   <h4 className="font-bold text-gray-900 mb-2">Shipping Information</h4>
                                   <p className="text-gray-600 font-semibold">{o.shipping_name}</p>
                                   <p className="text-gray-600">{o.shipping_address}</p>
                                   <p className="text-gray-600">{o.shipping_city}, {o.shipping_postal_code}</p>
+                                </div>
+                                <div className="space-y-4 shrink-0 w-48">
+                                  <div>
+                                    <h4 className="font-bold text-gray-900 mb-2">Fulfillment Status</h4>
+                                    <select
+                                      value={o.status}
+                                      onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white outline-none focus:border-black font-semibold capitalize"
+                                    >
+                                      <option value="Pending">Pending</option>
+                                      <option value="Paid">Paid</option>
+                                      <option value="Shipped">Shipped</option>
+                                      <option value="Delivered">Delivered</option>
+                                      <option value="Failed">Failed</option>
+                                      <option value="Refunded">Refunded</option>
+                                    </select>
+                                  </div>
+                                  {o.status === "Paid" && (
+                                    <div>
+                                      <button
+                                        onClick={() => handleRefundOrder(o.id)}
+                                        className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors border border-red-200/50"
+                                      >
+                                        Refund Order
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex-1 md:max-w-md">
                                   <h4 className="font-bold text-gray-900 mb-2">Order Items</h4>
