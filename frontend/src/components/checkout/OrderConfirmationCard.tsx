@@ -17,6 +17,17 @@ export function OrderConfirmationCard() {
     }
   }, []);
 
+  const getCurrencySymbol = (currency?: string) => {
+    const symbols: Record<string, string> = {
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      INR: "₹",
+    };
+    return symbols[currency || "USD"] || "$";
+  };
+  const currencySymbol = getCurrencySymbol(order?.currency);
+
   const displayItems = order ? order.items : [];
 
   return (
@@ -50,8 +61,8 @@ export function OrderConfirmationCard() {
               <span className="text-xs text-gray-500 mb-2">Qty: {item.quantity}</span>
               
               <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-black">${item.price}</span>
-                <span className="text-sm text-gray-400 line-through">${(parseFloat(item.price) * 1.25).toFixed(0)}</span>
+                <span className="text-lg font-bold text-black">{currencySymbol}{item.price}</span>
+                <span className="text-sm text-gray-400 line-through">{currencySymbol}{(parseFloat(item.price) * 1.25).toFixed(0)}</span>
                 <span className="text-xs font-bold text-pink-500 bg-pink-50 px-2 py-0.5 rounded-sm">20% OFF</span>
               </div>
             </div>

@@ -25,8 +25,19 @@ interface Order {
   total_price: string;
   status: string;
   created_at: string;
+  currency?: string;
   items: { product_name: string; price: string; quantity: number }[];
 }
+
+const getCurrencySymbol = (currency?: string) => {
+  const symbols: Record<string, string> = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    INR: "₹",
+  };
+  return symbols[currency || "USD"] || "$";
+};
 
 interface Address {
   id: number;
@@ -685,7 +696,7 @@ export default function AccountDashboard() {
                             </div>
                             <div>
                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total</p>
-                              <p className="text-sm font-bold text-gray-900 mt-0.5">${parseFloat(order.total_price).toFixed(2)}</p>
+                              <p className="text-sm font-bold text-gray-900 mt-0.5">{getCurrencySymbol(order.currency)}{parseFloat(order.total_price).toFixed(2)}</p>
                             </div>
                             <div>
                               <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
@@ -705,7 +716,7 @@ export default function AccountDashboard() {
                                   <p className="text-sm font-bold text-gray-800 leading-snug">{item.product_name}</p>
                                   <p className="text-xs text-gray-400 font-semibold mt-0.5">Quantity: {item.quantity}</p>
                                 </div>
-                                <p className="text-sm font-bold text-gray-900">${parseFloat(item.price).toFixed(2)}</p>
+                                <p className="text-sm font-bold text-gray-900">{getCurrencySymbol(order.currency)}{parseFloat(item.price).toFixed(2)}</p>
                               </div>
                             ))}
                           </div>
