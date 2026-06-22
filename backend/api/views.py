@@ -850,3 +850,36 @@ class CurrencyRatesView(APIView):
         })
 
 
+from rest_framework.permissions import IsAuthenticated
+
+class ReviewHelpfulVoteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id, *args, **kwargs):
+        review = get_object_or_404(Review, id=id)
+        user = request.user
+        
+        from .models import ReviewHelpfulVote
+        # Toggle vote check
+        vote_qs = ReviewHelpfulVote.objects.filter(review=review, user=user)
+        if vote_qs.exists():
+            vote_qs.delete()
+            if review.helpful_votes > 0:
+                review.helpful_votes -= 1
+                review.save()
+            return Response({
+                "status": "removed",
+                "message": "Helpful vote removed.",
+                "helpful_votes": review.helpful_votes
+            }, status=status.HTTP_200_OK)
+        else:
+            ReviewHelpfulVote.objects.create(review=review, user=user)
+            review.helpful_votes += 1
+            review.save()
+            return Response({
+                "status": "added",
+                "message": "Helpful vote added.",
+                "helpful_votes": review.helpful_votes
+            }, status=status.HTTP_200_OK)
+
+
