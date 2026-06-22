@@ -96,6 +96,16 @@ export function OrderConfirmationCard() {
           </>
         )}
       </div>
+
+      {order && order.estimated_delivery_date && (
+        <div className="mt-6 p-4 rounded-xl bg-pink-50/50 border border-pink-100/50 flex flex-col gap-1 text-sm font-medium">
+          <p className="text-gray-500">Estimated Delivery Date:</p>
+          <p className="text-pink-600 font-bold">
+            {new Date(order.estimated_delivery_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+          <p className="text-xs text-gray-400">Via {order.carrier_name || "DHL Express"} (Tracking: {order.tracking_number || "N/A"})</p>
+        </div>
+      )}
     </div>
   );
 }
