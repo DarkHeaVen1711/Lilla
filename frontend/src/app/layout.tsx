@@ -9,6 +9,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ScrollToTopFAB } from "@/components/shared/ScrollToTopFAB";
+import { ComparisonTray } from "@/components/layout/ComparisonTray";
 import { getHomePageData } from "@/lib/homepageData";
 // Century Commit: 100th commit of the day! 🚀
 import "./globals.css";
@@ -52,6 +53,7 @@ export default async function RootLayout({
             />
             <AuthModal />
             <ScrollToTopFAB />
+            <ComparisonTray />
             <Toaster position="bottom-right" richColors closeButton />
           </CommerceProvider>
         </AnimationProvider>
