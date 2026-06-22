@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
 import {
   LayoutDashboard,
@@ -80,21 +81,28 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteProduct = async (slug: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
-    try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${apiBase}/api/products/${slug}/`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        alert("Product deleted successfully!");
-        fetchData();
-      } else {
-        alert("Failed to delete product.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    toast("Delete this product?", {
+      action: {
+        label: "Confirm Delete",
+        onClick: async () => {
+          try {
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+            const res = await fetch(`${apiBase}/api/products/${slug}/`, {
+              method: "DELETE",
+            });
+            if (res.ok) {
+              toast.success("Product deleted successfully!");
+              fetchData();
+            } else {
+              toast.error("Failed to delete product.");
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error("An error occurred while deleting.");
+          }
+        },
+      },
+    });
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -111,13 +119,13 @@ export default function AdminDashboard() {
         }),
       });
       if (res.ok) {
-        alert("Product added successfully!");
+        toast.success("Product added successfully!");
         setIsAddModalOpen(false);
         setNewProduct({ id: "", name: "", slug: "", price: "", stock: "100", image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pink-serum.png", is_active: true });
         fetchData();
       } else {
         const errors = await res.json();
-        alert("Failed to add product: " + JSON.stringify(errors));
+        toast.error("Failed to add product: " + JSON.stringify(errors));
       }
     } catch (err) {
       console.error(err);
@@ -139,12 +147,12 @@ export default function AdminDashboard() {
         }),
       });
       if (res.ok) {
-        alert("Product updated successfully!");
+        toast.success("Product updated successfully!");
         setIsEditModalOpen(false);
         setEditingProduct(null);
         fetchData();
       } else {
-        alert("Failed to update product.");
+        toast.error("Failed to update product.");
       }
     } catch (err) {
       console.error(err);
