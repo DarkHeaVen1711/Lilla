@@ -207,6 +207,8 @@ class Review(SyncableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_reviews")
     rating = models.PositiveIntegerField()
     comment = models.TextField(blank=True)
+    helpful_votes = models.PositiveIntegerField(default=0)
+    images = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -214,6 +216,18 @@ class Review(SyncableModel):
 
     def __str__(self):
         return f"Review for {self.product.name} by {self.user.username} ({self.rating} stars)"
+
+
+class ReviewHelpfulVote(SyncableModel):
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="helpful_voters")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="helpful_reviews")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('review', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} voted helpful on review {self.review.id}"
 
 
 from django.db.models.signals import post_save, post_delete

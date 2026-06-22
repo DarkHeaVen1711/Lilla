@@ -4,7 +4,7 @@ from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
-    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView
+    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView, ReviewHelpfulVoteView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -38,4 +38,5 @@ urlpatterns = [
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
     path('catalog/active-combos/', ActiveCombosListView.as_view(), name='catalog-active-combos'),
     path('catalog/deal-of-the-day/', DealOfTheDayView.as_view(), name='catalog-deal-of-the-day'),
+    path('reviews/<int:id>/helpful/', ReviewHelpfulVoteView.as_view(), name='review-helpful'),
 ]
