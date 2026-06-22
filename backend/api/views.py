@@ -718,3 +718,13 @@ class AdminAnalyticsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class StockAdjustmentListView(generics.ListAPIView):
+    """Admin endpoint to list all stock adjustment history records."""
+    permission_classes = [IsAdminUser]
+
+    def get_serializer_class(self):
+        from .serializers import StockAdjustmentSerializer
+        return StockAdjustmentSerializer
+
+    def get_queryset(self):
+        return StockAdjustment.objects.select_related('product', 'user').order_by('-created_at')
