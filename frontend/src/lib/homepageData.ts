@@ -111,6 +111,7 @@ const LOCAL_HOME_PAGE_DATA = {
     { href: "/#home", label: "Home" },
     { href: "/skin", label: "Skin" },
     { href: "/makeup", label: "Makeup" },
+    { href: "/routine-builder", label: "Routine Finder" },
     { href: "/#about", label: "About Us" },
   ],
   heroSlides: [
