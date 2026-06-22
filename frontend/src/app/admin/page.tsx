@@ -107,6 +107,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [stockAdjustments, setStockAdjustments] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isClient, setIsClient] = useState(false);
@@ -169,35 +170,6 @@ export default function AdminDashboard() {
       is_deal_of_the_day: product.is_deal_of_the_day || false,
       deal_expires_at: product.deal_expires_at ? formatDatetimeLocal(product.deal_expires_at) : ""
     });
-    setIsEditModalOpen(true);
-  };
-
-  const fetchData = async () => {
-    try {
-      setIsLoadingAnalytics(true);
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      
-      const prodRes = await fetch(`${apiBase}/api/products/`);
-      if (prodRes.ok) setProducts(await prodRes.json());
-      
-      const orderRes = await fetch("/api/orders/");
-      if (orderRes.ok) setOrders(await orderRes.json());
-      
-      const userRes = await fetch("/api/admin/users/");
-      if (userRes.ok) setUsers(await userRes.json());
-
-      const analyticsRes = await fetch("/api/admin/analytics/");
-      if (analyticsRes.ok) {
-        setAnalytics(await analyticsRes.json());
-      }
-
-      const catRes = await fetch(`${apiBase}/api/categories/`);
-      if (catRes.ok) setCategories(await catRes.json());
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    } finally {
-      setIsLoadingAnalytics(false);
-    }
   };
 
   const handleDeleteProduct = async (slug: string) => {
@@ -295,6 +267,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleUserRole = async (userId: number, currentStaffStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_staff: !currentStaffStatus }),
+      });
+      if (res.ok) {
+        alert("User role updated successfully!");
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update role: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   const handleRefundOrder = async (orderId: string) => {
     if (!confirm("Are you sure you want to refund this order? This will process a Stripe refund and set status to Refunded.")) return;
     try {
@@ -311,6 +303,73 @@ export default function AdminDashboard() {
     } catch (err: any) {
       console.error(err);
       alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleToggleUserBlock = async (userId: number, currentActiveStatus: boolean) => {
+    const action = currentActiveStatus ? "block" : "unblock";
+    if (!confirm(`Are you sure you want to ${action} this user account?`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !currentActiveStatus }),
+      });
+      if (res.ok) {
+        alert(`User account ${action}ed successfully!`);
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to ${action} user: ${errorData.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const [
+        productsRes,
+        ordersRes,
+        usersRes,
+        analyticsRes,
+        stockAdjustmentsRes,
+        categoriesRes
+      ] = await Promise.allSettled([
+        fetch(`${apiBase}/api/products/`),
+        fetch("/api/orders/"),
+        fetch("/api/admin/users/"),
+        fetch("/api/admin/analytics/"),
+        fetch("/api/admin/stock-adjustments/"),
+        fetch(`${apiBase}/api/categories/`)
+      ]);
+
+      if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+        setProducts(await productsRes.value.json());
+      }
+      if (ordersRes.status === "fulfilled" && ordersRes.value.ok) {
+        setOrders(await ordersRes.value.json());
+      }
+      if (usersRes.status === "fulfilled" && usersRes.value.ok) {
+        setUsers(await usersRes.value.json());
+      }
+      if (analyticsRes.status === "fulfilled" && analyticsRes.value.ok) {
+        setAnalytics(await analyticsRes.value.json());
+      }
+      if (stockAdjustmentsRes.status === "fulfilled" && stockAdjustmentsRes.value.ok) {
+        setStockAdjustments(await stockAdjustmentsRes.value.json());
+      }
+      if (categoriesRes.status === "fulfilled" && categoriesRes.value.ok) {
+        setCategories(await categoriesRes.value.json());
+      }
+
+      setIsLoadingAnalytics(false);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      setIsLoadingAnalytics(false);
     }
   };
 
@@ -595,6 +654,46 @@ export default function AdminDashboard() {
                     </ResponsiveContainer>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Inventory Stock Adjustments History Section */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+              <div>
+                <h3 className="font-serif text-lg text-black font-semibold">Inventory Stock Adjustments History</h3>
+                <p className="text-xs text-gray-400 font-semibold mt-0.5">Logs of manual/automatic inventory stock level alterations</p>
+              </div>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[600px] text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 font-semibold uppercase tracking-wider">
+                      <th className="pb-3 font-medium">Product</th>
+                      <th className="pb-3 font-medium">Adjusted By</th>
+                      <th className="pb-3 font-medium">Old Stock</th>
+                      <th className="pb-3 font-medium">New Stock</th>
+                      <th className="pb-3 font-medium">Reason</th>
+                      <th className="pb-3 font-medium text-right">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-gray-600 font-medium">
+                    {stockAdjustments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-400 italic">No inventory logs available.</td>
+                      </tr>
+                    ) : (
+                      stockAdjustments.map((sa) => (
+                        <tr key={sa.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 font-bold text-gray-900">{sa.product_name}</td>
+                          <td className="py-3">{sa.user_email || sa.user_username || "System / Admin"}</td>
+                          <td className="py-3 font-mono">{sa.old_stock}</td>
+                          <td className="py-3 font-mono text-gray-900 font-bold">{sa.new_stock}</td>
+                          <td className="py-3 text-gray-500">{sa.reason}</td>
+                          <td className="py-3 text-right text-gray-400 font-normal">{new Date(sa.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1257,8 +1356,10 @@ export default function AdminDashboard() {
                       <th className="pb-4 font-medium">Username</th>
                       <th className="pb-4 font-medium">Email</th>
                       <th className="pb-4 font-medium">Role</th>
+                      <th className="pb-4 font-medium">Status</th>
                       <th className="pb-4 font-medium">Joined Date</th>
-                      <th className="pb-4 font-medium text-right">Last Login</th>
+                      <th className="pb-4 font-medium">Last Login</th>
+                      <th className="pb-4 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-sm">
@@ -1271,9 +1372,34 @@ export default function AdminDashboard() {
                             {u.is_staff ? "Admin" : "Customer"}
                           </span>
                         </td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                            {u.is_active ? "Active" : "Blocked"}
+                          </span>
+                        </td>
                         <td className="py-4 text-gray-500">{new Date(u.date_joined).toLocaleDateString()}</td>
-                        <td className="py-4 text-right text-gray-500">
+                        <td className="py-4 text-gray-500">
                           {u.last_login ? new Date(u.last_login).toLocaleString() : "Never"}
+                        </td>
+                        <td className="py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleUserRole(u.id, u.is_staff)}
+                              className="text-xs font-semibold bg-gray-100 hover:bg-gray-250 text-gray-700 px-2.5 py-1.5 rounded-lg transition-colors border border-gray-200/40"
+                            >
+                              Toggle Admin
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserBlock(u.id, u.is_active)}
+                              className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border ${
+                                u.is_active
+                                  ? "bg-red-50 hover:bg-red-100 text-red-700 border-red-200/50"
+                                  : "bg-green-50 hover:bg-green-100 text-green-700 border-green-200/50"
+                              }`}
+                            >
+                              {u.is_active ? "Block" : "Unblock"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
