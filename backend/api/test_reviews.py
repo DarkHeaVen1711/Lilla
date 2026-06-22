@@ -97,3 +97,53 @@ class ReviewAPITests(APITestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.reviews, 1)
         self.assertEqual(float(self.product.rating), 3.00)
+
+    def test_post_review_with_images_success(self):
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('product-reviews', kwargs={'slug': self.product.slug})
+        images_payload = ["https://example.com/img1.jpg", "https://example.com/img2.jpg"]
+        payload = {"rating": 5, "comment": "Beautiful!", "images": images_payload}
+        
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["images"], images_payload)
+        
+        # Verify database
+        review = Review.objects.get(product=self.product, user=self.user1)
+        self.assertEqual(review.images, images_payload)
+
+    def test_helpful_vote_toggle(self):
+        # Create a review first
+        review = Review.objects.create(
+            product=self.product,
+            user=self.user1,
+            rating=5,
+            comment="Awesome product!"
+        )
+        
+        url = reverse('review-helpful', kwargs={'id': review.id})
+        
+        # Unauthenticated user should fail
+        response = self.client.post(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+        # Authenticate user2
+        self.client.force_authenticate(user=self.user2)
+        
+        # Vote helpful (first time - should add)
+        response_add = self.client.post(url, {}, format='json')
+        self.assertEqual(response_add.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_add.data["status"], "added")
+        self.assertEqual(response_add.data["helpful_votes"], 1)
+        
+        review.refresh_from_db()
+        self.assertEqual(review.helpful_votes, 1)
+        
+        # Vote helpful (second time - should toggle off / remove)
+        response_remove = self.client.post(url, {}, format='json')
+        self.assertEqual(response_remove.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_remove.data["status"], "removed")
+        self.assertEqual(response_remove.data["helpful_votes"], 0)
+        
+        review.refresh_from_db()
+        self.assertEqual(review.helpful_votes, 0)
