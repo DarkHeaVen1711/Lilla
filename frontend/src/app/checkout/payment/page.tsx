@@ -20,9 +20,8 @@ export default function PaymentPage() {
   const cartItems = useStore((s) => s.cart.items);
   const orderTotal = useStore((s) => s.cart.orderTotal);
   const billingAddress = useStore((s) => s.checkoutForm.billingAddress);
-  const clearCart = useStore((s) => s.clearCart);
-  const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
   const placeOrder = useStore((s) => s.placeOrder);
+  const finalizeOrder = useStore((s) => s.finalizeOrder);
   const paymentMethod = useStore((s) => s.checkoutForm.paymentMethod);
   const setPaymentMethod = useStore((s) => s.setPaymentMethod);
   const [loading, setLoading] = useState(false);
@@ -37,16 +36,7 @@ export default function PaymentPage() {
     setLoading(true);
     try {
       const orderData = await placeOrder(method, apiFetch);
-      const orderWithImages = {
-        ...orderData,
-        items: orderData.items?.map((item: Record<string, unknown>) => ({
-          ...item,
-          image: cartItems.find(c => c.id === item.product_id)?.image || null
-        })) ?? []
-      };
-      localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
-      clearCart();
-      clearCheckoutForm();
+      finalizeOrder(orderData);
       router.push("/checkout/success");
     } catch (error) {
       console.error("Order submission error:", error);

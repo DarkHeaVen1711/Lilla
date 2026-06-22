@@ -35,9 +35,8 @@ export function CreditCardForm() {
   const billingAddress = useStore((s) => s.checkoutForm.billingAddress);
   const user = useStore((s) => s.user);
   const saveAddress = useStore((s) => s.checkoutForm.saveAddress);
-  const clearCart = useStore((s) => s.clearCart);
-  const clearCheckoutForm = useStore((s) => s.clearCheckoutForm);
   const placeOrder = useStore((s) => s.placeOrder);
+  const finalizeOrder = useStore((s) => s.finalizeOrder);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -129,17 +128,7 @@ export function CreditCardForm() {
         }
 
         // Step 4: Clear cart and redirect to success
-        const orderWithImages = {
-          ...orderData,
-          items: orderData.items?.map((item: Record<string, unknown>) => ({
-            ...item,
-            image: cartItems.find(c => c.id === item.product_id)?.image || null,
-          })) ?? [],
-        };
-
-        localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
-        clearCart();
-        clearCheckoutForm();
+        finalizeOrder(orderData);
         router.push("/checkout/success");
       } else {
         throw new Error("Payment is processing or in unexpected state.");

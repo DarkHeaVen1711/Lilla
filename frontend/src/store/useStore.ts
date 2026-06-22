@@ -109,6 +109,7 @@ interface LillaStore {
   setSaveAddress: (value: boolean) => void;
   clearCheckoutForm: () => void;
   placeOrder: (paymentMethod: PaymentMethodType, apiFetch: any) => Promise<any>;
+  finalizeOrder: (orderData: any) => any;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -357,6 +358,22 @@ export const useStore = create<LillaStore>()(
         }
 
         return await res.json();
+      },
+
+      finalizeOrder: (orderData) => {
+        const { cart, clearCart, clearCheckoutForm } = get();
+        const orderWithImages = {
+          ...orderData,
+          items: orderData.items?.map((item: Record<string, unknown>) => ({
+            ...item,
+            image: cart.items.find((c) => c.id === item.product_id)?.image || null,
+          })) ?? [],
+        };
+
+        localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
+        clearCart();
+        clearCheckoutForm();
+        return orderWithImages;
       },
     }),
     {
