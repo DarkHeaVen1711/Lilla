@@ -101,6 +101,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         elif sort_by == 'newest':
             queryset = queryset.order_by('-created_at')
 
+        # 6. Search query
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+
         return queryset
 
     def perform_create(self, serializer):

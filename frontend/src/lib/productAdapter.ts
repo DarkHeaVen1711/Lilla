@@ -113,6 +113,7 @@ export async function getProducts(options?: {
   sort?: string;
   limit?: number;
   featured?: boolean;
+  search?: string;
 }): Promise<FrontendProduct[]> {
   try {
     const url = new URL(`${API_BASE_URL}/api/products/`);
@@ -133,6 +134,9 @@ export async function getProducts(options?: {
     }
     if (options?.featured !== undefined) {
       url.searchParams.append("featured", options.featured ? "true" : "false");
+    }
+    if (options?.search) {
+      url.searchParams.append("search", options.search);
     }
 
     const res = await fetchWithTimeout(url.toString(), { cache: "no-store" }, 5000);
@@ -155,6 +159,20 @@ export async function getProducts(options?: {
     if (options?.categorySlug) {
       results = results.filter((p) =>
         p.categories.some((c) => c.slug === options.categorySlug)
+      );
+    }
+    if (options?.concerns && options.concerns.length > 0) {
+      results = results.filter((p) => {
+        const productConcerns = p.skinConcerns || [];
+        return options.concerns!.some((c) =>
+          productConcerns.some((pc) => pc.toLowerCase().includes(c.toLowerCase()))
+        );
+      });
+    }
+    if (options?.search) {
+      results = results.filter((p) =>
+        p.name.toLowerCase().includes(options.search!.toLowerCase()) ||
+        p.description.toLowerCase().includes(options.search!.toLowerCase())
       );
     }
     if (options?.limit) {

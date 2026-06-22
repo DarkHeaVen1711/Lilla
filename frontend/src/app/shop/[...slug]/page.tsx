@@ -1,5 +1,13 @@
 import { CatalogCard } from "@/components/shop/CatalogCard";
-import { getProducts } from "@/lib/productAdapter";
+import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
+
+const CONCERN_MAPPING: Record<string, string> = {
+  "acne": "acne",
+  "pigmentation": "pigmentation",
+  "anti-aging": "aging",
+  "dry-skin": "dry",
+  "barrier-repair": "barrier"
+};
 
 export default async function ShopCollectionPage({
   params,
@@ -10,23 +18,14 @@ export default async function ShopCollectionPage({
   const collectionSlug = slug[0];
   const collectionName = slug.join(" ").replace(/-/g, " ");
   
-  const allProducts = await getProducts();
-
-  // Filter products by category slug or skin concern
-  const products = allProducts.filter((product) => {
-    const catSlug = product.category.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-");
-    if (catSlug === collectionSlug) return true;
-
-    const matchesConcern = product.skinConcerns?.some((concern) => {
-      const concernSlug = concern.toLowerCase().replace(/ /g, "-");
-      if (collectionSlug === "anti-aging" && concernSlug.includes("aging")) return true;
-      if (collectionSlug === "dry-skin" && concernSlug.includes("dry")) return true;
-      if (collectionSlug === "barrier-repair" && concernSlug.includes("barrier")) return true;
-      return concernSlug === collectionSlug;
-    });
-
-    return matchesConcern;
-  });
+  const queryConcern = CONCERN_MAPPING[collectionSlug];
+  let products: FrontendProduct[] = [];
+  
+  if (queryConcern) {
+    products = await getProducts({ concerns: [queryConcern] });
+  } else {
+    products = await getProducts({ categorySlug: collectionSlug });
+  }
 
   return (
     <main className="min-h-screen bg-white">
