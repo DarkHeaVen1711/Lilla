@@ -61,3 +61,20 @@ class AdminAnalyticsTestCase(APITestCase):
             status="Pending"
         )
         OrderItem.objects.create(order=self.order_pending, product_id="prod-1", product_name="Product One", price=20.00, quantity=1)
+
+    def test_analytics_permissions(self):
+        url = reverse('admin-analytics')
+        
+        # 1. Anonymous User (Unauthorized)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+        # 2. Regular Customer (Forbidden)
+        self.client.force_authenticate(user=self.customer_user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # 3. Staff / Admin (Success)
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
