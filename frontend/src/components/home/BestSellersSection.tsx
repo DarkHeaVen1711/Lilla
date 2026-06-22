@@ -16,6 +16,7 @@ import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useAuthGate } from "@/lib/authGate";
 import { useStore } from "@/store/useStore";
 import { HoverAddToCart } from "@/components/ui/HoverAddToCart";
+import { Price } from "@/components/shared/Price";
 import type { CommerceProduct } from "@/lib/homepageData";
 import imgBackground from "../../images/background.png";
 
@@ -181,13 +182,9 @@ export function BestSellersSection({ products }: BestSellersSectionProps) {
                       </h3>
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[18px] font-bold text-black">
-                        ${product.price}
-                      </span>
+                      <Price amount={product.price} className="text-[18px] font-bold text-black" />
                       {product.originalPrice && (
-                        <span className="text-[16px] text-gray-400 font-medium line-through decoration-1">
-                          ${product.originalPrice}
-                        </span>
+                        <Price amount={product.originalPrice} className="text-[16px] text-gray-400 font-medium line-through decoration-1" />
                       )}
                       {product.discount && (
                         <span className="bg-brand-primary-light text-brand-secondary px-2.5 py-0.5 rounded-full text-[13px] font-bold">

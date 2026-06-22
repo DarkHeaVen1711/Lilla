@@ -8,6 +8,7 @@ import { X, Percent, ChevronLeft, ChevronRight, Trash2, Tag, CheckCircle2 } from
 
 import { useStore } from "@/store/useStore";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
+import { Price } from "@/components/shared/Price";
 import type { CommerceProduct } from "@/lib/homepageData";
 
 type CartSummaryProps = {
@@ -56,7 +57,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
       {/* 2. Top Promotional Coupon Banner */}
       <div className="w-full bg-brand-primary-light py-3.5 flex flex-wrap items-center justify-center gap-3 px-4 text-center">
         <span className="text-black font-semibold text-[20px] leading-none">
-          For orders above $100 use code :
+          For orders above <Price amount={100} /> use code :
         </span>
         <div className="bg-white border-[1.5px] border-brand-secondary rounded-full px-4 py-1 flex items-center justify-center shadow-sm">
           <span className="text-brand-secondary font-extrabold text-[16px] tracking-wide leading-none pt-0.5">TRYBEAUTY</span>
@@ -120,11 +121,9 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
                           </Link>
                           {/* Pricing Row */}
                           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <span className="text-[20px] sm:text-[26px] font-black text-black leading-none">${item.price}</span>
+                            <Price amount={item.price} className="text-[20px] sm:text-[26px] font-black text-black leading-none" />
                             {item.originalPrice && (
-                              <span className="text-[16px] sm:text-[20px] text-gray-400 font-bold line-through decoration-2 leading-none">
-                                ${item.originalPrice}
-                              </span>
+                              <Price amount={item.originalPrice} className="text-[16px] sm:text-[20px] text-gray-400 font-bold line-through decoration-2 leading-none" />
                             )}
                             {item.discount && (
                               <span className="bg-brand-primary-light text-brand-secondary px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[12px] sm:text-[15px] font-extrabold leading-none mt-1 sm:mt-0">
@@ -164,7 +163,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
             <div className="w-full lg:w-[35%] flex flex-col">
               {/* Top Shipping Indicator */}
               <div className="mb-6 px-1">
-                <p className="text-black font-semibold text-[19px] mb-3">Add item worth $51 to get a free delivery!</p>
+                <p className="text-black font-semibold text-[19px] mb-3">Add item worth <Price amount={51} /> to get a free delivery!</p>
                 <div className="w-full h-[4px] bg-gray-100 rounded-full relative overflow-visible">
                   <div 
                     className="absolute left-0 top-0 h-full bg-brand-secondary rounded-full transition-all duration-500" 
@@ -214,7 +213,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
               <div className="flex flex-col gap-4 text-[18px] sm:text-[20px] font-semibold">
                 <div className="flex justify-between text-gray-500">
                   <span>Subtotal</span>
-                  <span className="text-black font-bold">${subtotal.toFixed(2)}</span>
+                  <Price amount={subtotal} className="text-black font-bold" />
                 </div>
                 {couponActive && (
                   <motion.div
@@ -223,12 +222,12 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
                     className="flex justify-between text-green-600"
                   >
                     <span className="flex items-center gap-1.5"><Tag className="w-4 h-4" /> {couponCode} (-{couponDiscountPercentage}%)</span>
-                    <span className="font-extrabold">-${discountAmount.toFixed(2)}</span>
+                    <span className="font-extrabold">-<Price amount={discountAmount} /></span>
                   </motion.div>
                 )}
                 <div className="flex justify-between text-gray-500">
                   <span>Delivery Fee</span>
-                  <span className="text-black font-bold">{shippingFee === 0 ? <span className="text-green-600">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
+                  <span className="text-black font-bold">{shippingFee === 0 ? <span className="text-green-600">FREE</span> : <Price amount={shippingFee} />}</span>
                 </div>
               </div>
   
@@ -236,7 +235,7 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
   
                 <div className="flex justify-between items-center mb-8">
                 <span className="text-[20px] sm:text-[24px] font-extrabold text-black">Total</span>
-                <span className="text-[28px] sm:text-[36px] font-black text-black leading-none">${orderTotal.toFixed(2)}</span>
+                <Price amount={orderTotal} className="text-[28px] sm:text-[36px] font-black text-black leading-none" />
               </div>
   
                 <Link href="/checkout" className="w-full h-[50px] sm:h-[56px] bg-black text-white rounded-xl text-[20px] sm:text-[24px] font-bold hover:bg-gray-800 transition-colors flex items-center justify-center">

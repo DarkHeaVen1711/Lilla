@@ -48,6 +48,17 @@ export default function OrderConfirmationPage() {
 
   const total = order ? order.total_price : cartTotal;
 
+  const getCurrencySymbol = (currency?: string) => {
+    const symbols: Record<string, string> = {
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      INR: "₹",
+    };
+    return symbols[currency || "USD"] || "$";
+  };
+  const currencySymbol = getCurrencySymbol(order?.currency);
+
   return (
     <div className="w-full min-h-screen bg-brand-bg-cream flex flex-col items-center pb-20 pt-16">
       <div className="w-full max-w-[1440px] px-8 lg:px-16 mx-auto min-h-[650px] flex flex-col items-center">
@@ -56,7 +67,7 @@ export default function OrderConfirmationPage() {
         <div className="w-full max-w-4xl text-left mb-8">
           <h1 className="font-serif text-5xl mb-3">Order Confirmation</h1>
           <p className="text-xl text-gray-800 font-sans">
-            Order Total : ${total}
+            Order Total : {currencySymbol}{total}
           </p>
         </div>
 

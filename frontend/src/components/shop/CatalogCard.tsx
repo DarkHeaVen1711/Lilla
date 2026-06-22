@@ -8,6 +8,7 @@ import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
 import { useAuthGate } from "@/lib/authGate";
 import { toast } from "sonner";
+import { Price } from "@/components/shared/Price";
 import type { CommerceProduct } from "@/lib/homepageData";
 
 type CatalogCardProps = {
@@ -68,9 +69,9 @@ export function CatalogCard({ product }: CatalogCardProps) {
           <p className="mt-1 text-sm text-black/65">{product.description}</p>
         </div>
         <div className="text-right">
-          <p className="text-xl font-bold text-black">${product.price}</p>
+          <Price amount={product.price} className="text-xl font-bold text-black" />
           {product.originalPrice ? (
-            <p className="text-sm text-black/45 line-through">${product.originalPrice}</p>
+            <Price amount={product.originalPrice} className="text-sm text-black/45 line-through block" />
           ) : null}
         </div>
       </div>

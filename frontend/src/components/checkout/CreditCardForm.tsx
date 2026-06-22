@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { apiFetch } from "@/lib/apiClient";
+import { Price } from "@/components/shared/Price";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const CARD_ELEMENT_OPTIONS = {
@@ -165,23 +166,23 @@ export function CreditCardForm() {
         <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1.5 mt-4">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-semibold text-black">${subtotal.toFixed(2)}</span>
+            <Price amount={subtotal} className="font-semibold text-black" />
           </div>
           {discountAmount > 0 && (
             <div className="flex justify-between text-green-600">
               <span>Coupon Discount</span>
-              <span>-${discountAmount.toFixed(2)}</span>
+              <span>-<Price amount={discountAmount} /></span>
             </div>
           )}
           <div className="flex justify-between">
             <span>Shipping</span>
             <span className="font-semibold text-black">
-              {shippingFee === 0 ? "FREE" : `$${shippingFee.toFixed(2)}`}
+              {shippingFee === 0 ? "FREE" : <Price amount={shippingFee} />}
             </span>
           </div>
           <div className="border-t border-gray-200 pt-1.5 flex justify-between text-base font-black text-black">
             <span>Total</span>
-            <span>${orderTotal.toFixed(2)}</span>
+            <span><Price amount={orderTotal} /></span>
           </div>
         </div>
 

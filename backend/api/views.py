@@ -202,6 +202,7 @@ class HomepageDataView(APIView):
                 { "href": "/#home", "label": "Home" },
                 { "href": "/skin", "label": "Skin" },
                 { "href": "/makeup", "label": "Makeup" },
+                { "href": "/routine-builder", "label": "Routine Finder" },
                 { "href": "/#about", "label": "About Us" }
             ],
             "heroSlides": [
@@ -808,4 +809,44 @@ class UserProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def get_exchange_rates():
+    import requests
+    from django.core.cache import cache
+    rates = cache.get("currency_rates")
+    if not rates:
+        try:
+            res = requests.get("https://open.er-api.com/v6/latest/USD", timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                all_rates = data.get("rates", {})
+                rates = {
+                    "USD": 1.0,
+                    "EUR": float(all_rates.get("EUR", 0.92)),
+                    "GBP": float(all_rates.get("GBP", 0.78)),
+                    "INR": float(all_rates.get("INR", 83.50))
+                }
+                cache.set("currency_rates", rates, timeout=86400)
+        except Exception as e:
+            print(f"Error fetching exchange rates: {e}")
+
+    if not rates:
+        rates = {
+            "USD": 1.0,
+            "EUR": 0.92,
+            "GBP": 0.78,
+            "INR": 83.50
+        }
+    return rates
+
+
+class CurrencyRatesView(APIView):
+    def get(self, request, *args, **kwargs):
+        rates = get_exchange_rates()
+        return Response({
+            "base": "USD",
+            "rates": rates
+        })
+
 

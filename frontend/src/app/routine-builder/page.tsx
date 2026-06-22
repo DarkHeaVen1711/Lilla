@@ -7,6 +7,7 @@ import { Sparkles, ChevronRight, ChevronLeft, Check, Loader2, ShoppingBag, Dropl
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
+import { Price } from "@/components/shared/Price";
 
 // ─── Quiz Questions & Options Definitions ─────────────────────────────────────
 interface Option {
@@ -359,9 +360,9 @@ export default function RoutineBuilderPage() {
                         <p className="text-xs text-gray-500 font-semibold mt-2 leading-relaxed flex-grow">{item.desc}</p>
                         
                         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
-                          <span className="text-[18px] font-black text-black">${p.price}</span>
+                          <Price amount={p.price} className="text-[18px] font-black text-black" />
                           {p.originalPrice && (
-                            <span className="text-xs text-gray-400 line-through">${p.originalPrice}</span>
+                            <Price amount={p.originalPrice} className="text-xs text-gray-400 line-through" />
                           )}
                         </div>
                       </div>
@@ -385,8 +386,8 @@ export default function RoutineBuilderPage() {
 
                 <div className="flex flex-col items-center md:items-end gap-4 flex-shrink-0">
                   <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-black text-white">${discountedBundlePrice.toFixed(2)}</span>
-                    <span className="text-lg text-gray-400 line-through decoration-1">${totalBundlePrice.toFixed(2)}</span>
+                    <Price amount={discountedBundlePrice} className="text-4xl font-black text-white" />
+                    <Price amount={totalBundlePrice} className="text-lg text-gray-400 line-through decoration-1" />
                   </div>
 
                   {addedToCart ? (

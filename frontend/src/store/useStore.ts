@@ -112,6 +112,13 @@ interface LillaStore {
   clearCheckoutForm: () => void;
   placeOrder: (paymentMethod: PaymentMethodType, apiFetch: any) => Promise<any>;
   finalizeOrder: (orderData: any) => any;
+
+  // Currency Switcher
+  currency: string;
+  rates: Record<string, number>;
+  setCurrency: (currency: string) => void;
+  setRates: (rates: Record<string, number>) => void;
+  fetchCurrencyRates: () => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -339,22 +346,46 @@ export const useStore = create<LillaStore>()(
           },
         })),
 
+      // ── Currency ──────────────────────────────────────────────────────────
+      currency: "USD",
+      rates: { USD: 1, EUR: 0.92, GBP: 0.78, INR: 83.5 },
+
+      setCurrency: (currency) => set({ currency }),
+      setRates: (rates) => set({ rates }),
+      fetchCurrencyRates: async () => {
+        try {
+          const res = await apiFetch("/api/currency-rates");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.rates) {
+              set({ rates: data.rates });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch exchange rates:", error);
+        }
+      },
+
       placeOrder: async (paymentMethod, apiFetch) => {
-        const { cart, checkoutForm } = get();
+        const { cart, checkoutForm, currency, rates } = get();
         const { billingAddress } = checkoutForm;
+        const rate = rates[currency] || 1.0;
+        const convertedTotal = cart.orderTotal * rate;
+
         const orderPayload = {
           user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
           shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
           shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
           shipping_city: billingAddress.city || "New York",
           shipping_postal_code: billingAddress.zip || "10001",
-          total_price: cart.orderTotal.toFixed(2),
+          total_price: convertedTotal.toFixed(2),
           payment_method: paymentMethod,
           coupon_code: cart.couponCode,
+          currency: currency || "USD",
           items: cart.items.map(item => ({
             product_id: item.id,
             product_name: item.name,
-            price: item.price.toFixed(2),
+            price: (item.price * rate).toFixed(2),
             quantity: item.quantity,
           })),
         };
@@ -395,6 +426,8 @@ export const useStore = create<LillaStore>()(
       partialize: (state) => ({
         user: state.user,
         cart: state.cart,
+        currency: state.currency,
+        rates: state.rates,
         checkoutForm: {
           billingAddress: state.checkoutForm.billingAddress,
           sameAsShipping: state.checkoutForm.sameAsShipping,

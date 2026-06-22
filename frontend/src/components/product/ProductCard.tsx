@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useCommerce } from "@/components/providers/CommerceProvider";
 import { useStore } from "@/store/useStore";
 import { useAuthGate } from "@/lib/authGate";
+import { Price } from "@/components/shared/Price";
 import type { CommerceProduct } from "@/lib/homepageData";
 import imgCart from "@/images/cart.png";
 
@@ -110,9 +111,9 @@ export function ProductCard({ product = FALLBACK_PRODUCT, priority = false }: Pr
         {/* Pricing & Cart Action Row */}
         <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base text-black">${product.price}</span>
+            <Price amount={product.price} className="font-bold text-base text-black" />
             {product.originalPrice && (
-              <span className="text-xs text-gray-400 line-through">${product.originalPrice}</span>
+              <Price amount={product.originalPrice} className="text-xs text-gray-400 line-through" />
             )}
           </div>
           <button
