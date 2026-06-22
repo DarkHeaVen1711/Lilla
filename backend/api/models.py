@@ -1,7 +1,15 @@
 import uuid
 from django.db import models
+from django.core.cache import cache
 
-class Category(models.Model):
+class SyncableModel(models.Model):
+    is_synced = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+class Category(SyncableModel):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     image = models.CharField(max_length=500, blank=True, null=True)
@@ -13,7 +21,7 @@ class Category(models.Model):
         verbose_name_plural = "Categories"
 
 
-class Product(models.Model):
+class Product(SyncableModel):
     id = models.CharField(max_length=100, primary_key=True)
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
     name = models.CharField(max_length=255)
@@ -65,7 +73,7 @@ class Product(models.Model):
         ]
 
 
-class Combo(models.Model):
+class Combo(SyncableModel):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
     description = models.TextField(blank=True)
@@ -88,7 +96,7 @@ class Combo(models.Model):
 
 
 
-class Coupon(models.Model):
+class Coupon(SyncableModel):
     code = models.CharField(max_length=50, unique=True, db_index=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)  # e.g., 20.00 for 20%
     is_active = models.BooleanField(default=True)
@@ -101,7 +109,7 @@ class Coupon(models.Model):
 
 from django.contrib.auth.models import User
 
-class Order(models.Model):
+class Order(SyncableModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     user_identifier = models.CharField(max_length=255, db_index=True)  # email or phone number
@@ -128,7 +136,7 @@ class Order(models.Model):
         return f"Order {self.id} ({self.user_identifier})"
 
 
-class OrderItem(models.Model):
+class OrderItem(SyncableModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product_id = models.CharField(max_length=100)
     product_name = models.CharField(max_length=255)
@@ -139,7 +147,7 @@ class OrderItem(models.Model):
         return f"{self.quantity} x {self.product_name} in Order {self.order.id}"
 
 
-class StockAdjustment(models.Model):
+class StockAdjustment(SyncableModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_adjustments")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     old_stock = models.IntegerField()
@@ -151,7 +159,7 @@ class StockAdjustment(models.Model):
         return f"StockAdjustment {self.product.name}: {self.old_stock} -> {self.new_stock} by {self.user}"
 
 
-class Favorite(models.Model):
+class Favorite(SyncableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -163,7 +171,7 @@ class Favorite(models.Model):
         return f"{self.user.username} favorited {self.product.name}"
 
 
-class Address(models.Model):
+class Address(SyncableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
@@ -181,7 +189,7 @@ class Address(models.Model):
         return f"{self.first_name} {self.last_name} - {self.address}"
 
 
-class Review(models.Model):
+class Review(SyncableModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="product_reviews")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_reviews")
     rating = models.PositiveIntegerField()
@@ -212,4 +220,12 @@ def update_product_rating_metrics(sender, instance, **kwargs):
         product.rating = 4.80
     product.reviews = count
     product.save()
+
+from django.db.models.signals import pre_save
+
+@receiver(pre_save)
+def set_unsynced_offline(sender, instance, **kwargs):
+    if isinstance(instance, SyncableModel):
+        if not cache.get('is_online', True):
+            instance.is_synced = False
 

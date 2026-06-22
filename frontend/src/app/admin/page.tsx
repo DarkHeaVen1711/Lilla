@@ -4,6 +4,7 @@ import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
+import Loader from "@/components/common/Loader";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -263,15 +264,15 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        alert("Order status updated successfully!");
+        toast.success("Order status updated successfully!");
         fetchData();
       } else {
         const errorData = await res.json();
-        alert(`Failed to update status: ${errorData.error || "Unknown error"}`);
+        toast.error(`Failed to update status: ${errorData.error || "Unknown error"}`);
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -283,15 +284,15 @@ export default function AdminDashboard() {
         body: JSON.stringify({ is_staff: !currentStaffStatus }),
       });
       if (res.ok) {
-        alert("User role updated successfully!");
+        toast.success("User role updated successfully!");
         fetchData();
       } else {
         const errorData = await res.json();
-        alert(`Failed to update role: ${errorData.error || "Unknown error"}`);
+        toast.error(`Failed to update role: ${errorData.error || "Unknown error"}`);
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -302,15 +303,15 @@ export default function AdminDashboard() {
         method: "POST",
       });
       if (res.ok) {
-        alert("Order refunded successfully!");
+        toast.success("Order refunded successfully!");
         fetchData();
       } else {
         const errorData = await res.json();
-        alert(`Failed to refund order: ${errorData.error || "Unknown error"}`);
+        toast.error(`Failed to refund order: ${errorData.error || "Unknown error"}`);
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -324,15 +325,15 @@ export default function AdminDashboard() {
         body: JSON.stringify({ is_active: !currentActiveStatus }),
       });
       if (res.ok) {
-        alert(`User account ${action}ed successfully!`);
+        toast.success(`User account ${action}ed successfully!`);
         fetchData();
       } else {
         const errorData = await res.json();
-        alert(`Failed to ${action} user: ${errorData.error || "Unknown error"}`);
+        toast.error(`Failed to ${action} user: ${errorData.error || "Unknown error"}`);
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -478,8 +479,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="h-[320px] w-full mt-2">
                   {!isClient || !analytics ? (
-                    <div className="w-full h-full bg-gray-50 animate-pulse rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
-                      Loading trend metrics...
+                    <div className="w-full h-full bg-gray-50 rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
+                      <Loader size={14} color="#9CA3AF" />
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -599,8 +600,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="h-[320px] w-full mt-2">
                   {!isClient || !analytics ? (
-                    <div className="w-full h-full bg-gray-50 animate-pulse rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
-                      Loading product aggregates...
+                    <div className="w-full h-full bg-gray-50 rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
+                      <Loader size={14} color="#9CA3AF" />
                     </div>
                   ) : analytics.top_products.length === 0 ? (
                     <div className="w-full h-full rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold border border-dashed border-gray-100">
