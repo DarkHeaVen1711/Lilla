@@ -149,7 +149,13 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
   const [zipcode, setZipcode] = useState("123456");
   const [isEditingZip, setIsEditingZip] = useState(false);
   const [zipInput, setZipInput] = useState("123456");
-  const [zipMessage, setZipMessage] = useState("Delivery By 8 Jan");
+  
+  const getDynamicDeliveryDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 4);
+    return `Delivery by ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
+  };
+  const [zipMessage, setZipMessage] = useState(getDynamicDeliveryDate());
   
   // Accordion tabs
   const [expandedSection, setExpandedSection] = useState<"desc" | "detail" | "ingredients" | null>("desc");
@@ -315,7 +321,14 @@ export function ProductDetailPDP({ product: initialProduct, recommendedProducts 
     if (zipInput.trim().length >= 5) {
       setZipcode(zipInput);
       setIsEditingZip(false);
-      setZipMessage("Delivery By 8 Jan");
+      
+      const d = new Date();
+      // Calculate extra days dynamically based on the zipcode digits
+      const zipVal = parseInt(zipInput) || 0;
+      const extraDays = (zipVal % 3) + 3; // 3, 4, or 5 days
+      d.setDate(d.getDate() + extraDays);
+      const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      setZipMessage(`Delivery by ${dateStr}`);
     }
   };
 
