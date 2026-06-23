@@ -218,7 +218,16 @@ export function Navbar({ links }: NavbarProps) {
                     );
                   })}
                   <div className="h-px bg-gray-100 w-full my-2" />
-                  {user && user.isStaff && (
+                  {user && (user.role === "manager" || user.role === "admin") && (
+                    <>
+                      <Link href="/manager/dashboard" className="flex items-center gap-4 text-lg font-medium text-black">
+                        <User className="w-5 h-5" />
+                        Manager Dashboard
+                      </Link>
+                      <div className="h-px bg-gray-100 w-full my-2" />
+                    </>
+                  )}
+                  {user && user.role === "admin" && (
                     <>
                       <Link href="/admin" className="flex items-center gap-4 text-lg font-medium text-black">
                         <User className="w-5 h-5" />
@@ -327,9 +336,32 @@ export function Navbar({ links }: NavbarProps) {
                       transition={{ duration: 0.15 }}
                       className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-lg border border-gray-100 p-2 z-50"
                     >
-                      <p className="px-3 py-2 text-xs text-gray-500 font-medium truncate">{user.identityString}</p>
+                      <div className="px-3 py-2 flex flex-col gap-1">
+                        <p className="text-xs text-gray-500 font-medium truncate">{user.identityString}</p>
+                        {user.role && user.role !== "customer" && (
+                          <span className={`inline-block w-fit px-2 py-0.5 text-[10px] font-bold uppercase rounded-md ${
+                            user.role === "admin"
+                              ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                              : "bg-zinc-500/10 text-zinc-500 border border-zinc-500/20"
+                          }`}>
+                            {user.role}
+                          </span>
+                        )}
+                      </div>
                       <div className="h-px bg-gray-100 my-1" />
-                      {user.isStaff && (
+                      {user && (user.role === "manager" || user.role === "admin") && (
+                        <>
+                          <Link
+                            href="/manager/dashboard"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-black hover:bg-gray-50 rounded-lg transition-colors"
+                          >
+                            <User className="w-4 h-4" /> Manager Dashboard
+                          </Link>
+                          <div className="h-px bg-gray-100 my-1" />
+                        </>
+                      )}
+                      {user.role === "admin" && (
                         <>
                           <Link
                             href="/admin"

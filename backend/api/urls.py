@@ -5,7 +5,8 @@ from .views import (
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
     CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView, ReviewHelpfulVoteView,
-    AdminProductApproveDeletionView, AdminProductRejectDeletionView, ProductDescriptionGenerateView
+    AdminUserRoleUpdateView, AdminProductApproveDeletionView, AdminProductRejectDeletionView, ProductDescriptionGenerateView, BulkProductUploadView,
+    ManagerInsightsView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -27,6 +28,7 @@ urlpatterns = [
 
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/<int:id>/', AdminUserUpdateView.as_view(), name='admin-user-update'),
+    path('admin/users/<int:id>/role/', AdminUserRoleUpdateView.as_view(), name='admin-user-role'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
     path('admin/stock-adjustments/', StockAdjustmentListView.as_view(), name='admin-stock-adjustments'),
     path('admin/products/<str:pk>/approve-deletion/', AdminProductApproveDeletionView.as_view(), name='admin-product-approve-deletion'),
@@ -43,4 +45,6 @@ urlpatterns = [
     path('catalog/deal-of-the-day/', DealOfTheDayView.as_view(), name='catalog-deal-of-the-day'),
     path('reviews/<int:id>/helpful/', ReviewHelpfulVoteView.as_view(), name='review-helpful'),
     path('manager/products/generate-description/', ProductDescriptionGenerateView.as_view(), name='manager-products-generate-description'),
+    path('manager/products/bulk-upload/', BulkProductUploadView.as_view(), name='manager-products-bulk-upload'),
+    path('manager/insights/', ManagerInsightsView.as_view(), name='manager-insights'),
 ]
