@@ -28,11 +28,14 @@ export interface ProfileFields {
   phone?: string;
 }
 
+export type UserRole = "customer" | "manager" | "admin";
+
 export interface UserState {
   token: string;
   identityString: string;
   isGuest: boolean;
   isStaff: boolean;
+  role: UserRole;
   metadata: ProfileFields;
 }
 
@@ -63,9 +66,14 @@ export interface AddressData {
 interface LillaStore {
   // User Session
   user: UserState | null;
-  loginUser: (identityString: string, isStaff: boolean, metadata?: ProfileFields) => void;
+  loginUser: (identityString: string, isStaff: boolean, metadata?: ProfileFields, role?: UserRole) => void;
   updateUserMetadata: (metadata: Partial<ProfileFields>) => void;
   logoutUser: () => void;
+
+  // Role-derived selectors
+  isAdmin: () => boolean;
+  isManager: () => boolean;
+  isManagerOrAdmin: () => boolean;
 
   // Auth Modal State Machine
   authModal: {
@@ -165,17 +173,23 @@ export const useStore = create<LillaStore>()(
       // ── User ──────────────────────────────────────────────────────────────
       user: null,
 
-      loginUser: (identityString, isStaff, metadata) => {
+      loginUser: (identityString, isStaff, metadata, role = "customer") => {
         set({
           user: {
             token: "",
             identityString,
             isGuest: false,
             isStaff: !!isStaff,
+            role,
             metadata: metadata || {},
           },
         });
       },
+
+      isAdmin: () => get().user?.role === "admin",
+      isManager: () => get().user?.role === "manager",
+      isManagerOrAdmin: () =>
+        get().user?.role === "manager" || get().user?.role === "admin",
 
       updateUserMetadata: (metadata) =>
         set((state) => {

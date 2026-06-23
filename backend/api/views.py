@@ -435,8 +435,17 @@ class VerifyOTPView(APIView):
                 {"detail": "User not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        # Retrieve role from UserProfile (safe fallback to 'customer')
+        try:
+            role = user.userprofile.role
+        except Exception:
+            role = "customer"
             
         refresh = RefreshToken.for_user(user)
+        # Embed role as a custom JWT claim so the frontend can read it
+        # from the token without an extra API round-trip.
+        refresh["role"] = role
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
@@ -444,9 +453,11 @@ class VerifyOTPView(APIView):
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "is_staff": user.is_staff
+                "is_staff": user.is_staff,
+                "role": role,
             }
         }, status=status.HTTP_200_OK)
+
 
 
 import stripe
