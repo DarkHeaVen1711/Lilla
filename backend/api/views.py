@@ -27,6 +27,7 @@ from .throttling import RequestOTPThrottle, VerifyOTPThrottle
 
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from .permissions import IsAdminRole, IsManagerOrAdminRole, IsAdminRoleForDestroy
 
 class IsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
@@ -44,16 +45,25 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminRoleForDestroy]
 
     def get_permissions(self):
         if self.action == 'reviews':
             from rest_framework.permissions import AllowAny
             return [AllowAny()]
-        return super().get_permissions()
+        return [IsAdminRoleForDestroy()]
 
     def get_queryset(self):
+        from .permissions import get_role
         queryset = Product.objects.select_related('category').all()
+
+        # Public requests and customers only see active products
+        user = self.request.user
+        is_staff_role = (
+            user.is_authenticated and get_role(user) in ('manager', 'admin')
+        )
+        if not is_staff_role:
+            queryset = queryset.filter(is_active=True, deletion_status='active')
         
         # 1. Multi-select Categories (list variable or comma-separated)
         categories = self.request.query_params.getlist('category')
@@ -112,28 +122,65 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
+        role = "Unknown"
+        try:
+            role = self.request.user.userprofile.role
+        except Exception:
+            pass
         if instance.stock > 0:
             StockAdjustment.objects.create(
                 product=instance,
                 user=self.request.user if self.request.user.is_authenticated else None,
                 old_stock=0,
                 new_stock=instance.stock,
-                reason="API Product Creation Initial Stock"
+                reason=f"Product Creation Initial Stock (created_by_role={role})"
             )
 
     def perform_update(self, serializer):
         old_stock = self.get_object().stock
         new_stock = serializer.validated_data.get('stock', old_stock)
-        
+        role = "Unknown"
+        try:
+            role = self.request.user.userprofile.role
+        except Exception:
+            pass
+
         instance = serializer.save()
-        
+
         if old_stock != new_stock:
             StockAdjustment.objects.create(
                 product=instance,
                 user=self.request.user if self.request.user.is_authenticated else None,
                 old_stock=old_stock,
                 new_stock=new_stock,
-                reason="API Manual Edit via Admin Dashboard"
+                reason=f"API Manual Edit (updated_by_role={role})"
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft-delete workflow:
+        - Manager → sets deletion_status='pending_deletion', returns 202
+        - Admin   → sets deletion_status='archived', returns 200
+        Hard deletion is never performed so Order history is preserved.
+        """
+        from .permissions import get_role
+        instance = self.get_object()
+        role = get_role(request.user)
+
+        if role == 'manager':
+            instance.deletion_status = 'pending_deletion'
+            instance.save(update_fields=['deletion_status'])
+            return Response(
+                {"status": "pending_deletion",
+                 "detail": "Deletion request submitted. Awaiting admin approval."},
+                status=status.HTTP_202_ACCEPTED
+            )
+        else:  # admin
+            instance.deletion_status = 'archived'
+            instance.is_active = False
+            instance.save(update_fields=['deletion_status', 'is_active'])
+            return Response(
+                {"status": "archived", "detail": "Product archived successfully."},
+                status=status.HTTP_200_OK
             )
 
     @action(detail=True, methods=['get', 'post'], url_path='reviews')
@@ -159,6 +206,39 @@ class ProductViewSet(viewsets.ModelViewSet):
                 serializer.save(user=request.user, product=product)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminProductApproveDeletionView(APIView):
+    """Admin approves a pending deletion → archives the product."""
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk, *args, **kwargs):
+        product = get_object_or_404(Product, pk=pk)
+        if product.deletion_status != 'pending_deletion':
+            return Response(
+                {"error": f"Product is '{product.deletion_status}', not 'pending_deletion'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        product.deletion_status = 'archived'
+        product.is_active = False
+        product.save(update_fields=['deletion_status', 'is_active'])
+        return Response({"status": "archived", "detail": "Product archived."}, status=status.HTTP_200_OK)
+
+
+class AdminProductRejectDeletionView(APIView):
+    """Admin rejects a pending deletion → restores product to active."""
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk, *args, **kwargs):
+        product = get_object_or_404(Product, pk=pk)
+        if product.deletion_status != 'pending_deletion':
+            return Response(
+                {"error": f"Product is '{product.deletion_status}', not 'pending_deletion'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        product.deletion_status = 'active'
+        product.save(update_fields=['deletion_status'])
+        return Response({"status": "active", "detail": "Deletion request rejected. Product restored."}, status=status.HTTP_200_OK)
 
 
 class HomepageDataView(APIView):

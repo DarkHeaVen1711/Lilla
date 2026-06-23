@@ -74,16 +74,24 @@ class PermissionClassTest(TestCase):
     """Allow/deny matrix for all three roles × permission classes."""
 
     def setUp(self):
-        self.factory = APIRequestFactory()
         self.customer = make_user("customer_user", role="customer")
         self.manager = make_user("manager_user", role="manager")
         self.admin = make_user("admin_user", role="admin")
 
     def _check(self, view_class, user, method="get"):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=user)
         view = view_class.as_view()
-        req = getattr(self.factory, method)("/")
+        # Build a real request so DRF sees the authenticated user
+        factory = APIRequestFactory()
+        req = getattr(factory, method)("/")
         req.user = user
-        response = view(req)
+        # Wrap in DRF Request and force authenticate
+        from rest_framework.request import Request
+        drf_req = Request(req)
+        drf_req._force_auth_user = user
+        response = view(drf_req)
         return response.status_code
 
     # IsAdminRole

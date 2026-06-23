@@ -58,6 +58,19 @@ class Product(SyncableModel):
     # Active state
     is_active = models.BooleanField(default=True)
 
+    # Soft-delete workflow (Manager requests → Admin approves)
+    DELETION_STATUS_CHOICES = [
+        ("active", "Active"),
+        ("pending_deletion", "Pending Deletion"),
+        ("archived", "Archived"),
+    ]
+    deletion_status = models.CharField(
+        max_length=20,
+        choices=DELETION_STATUS_CHOICES,
+        default="active",
+        db_index=True,
+    )
+
     # Inventory stock
     stock = models.PositiveIntegerField(default=100)
 
