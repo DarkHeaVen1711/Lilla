@@ -109,6 +109,27 @@ class Coupon(SyncableModel):
 
 from django.contrib.auth.models import User
 
+
+ROLE_CHOICES = [
+    ("customer", "Customer"),
+    ("manager", "Manager"),
+    ("admin", "Admin"),
+]
+
+
+class UserProfile(models.Model):
+    """Stores the application-level role for every Django User.
+
+    Kept as a separate OneToOne model to avoid replacing AbstractUser and
+    re-generating auth migrations. Role is always accessed as
+    ``request.user.userprofile.role``.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer", db_index=True)
+
+    def __str__(self):
+        return f"{self.user.username} ({self.role})"
+
 class Order(SyncableModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
@@ -256,3 +277,25 @@ def set_unsynced_offline(sender, instance, **kwargs):
         if not cache.get('is_online', True):
             instance.is_synced = False
 
+
+# ── UserProfile auto-creation ────────────────────────────────────────────────
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Create a UserProfile whenever a new User is created.
+
+    Backfills role='admin' for any superuser or staff user created via the
+    Django CLI (e.g. createsuperuser), so they don't lose access.
+    """
+    if created:
+        role = "customer"
+        if instance.is_superuser or instance.is_staff:
+            role = "admin"
+        UserProfile.objects.get_or_create(user=instance, defaults={"role": role})
+    else:
+        # Ensure a profile always exists even if the row was somehow missing
+        profile, _ = UserProfile.objects.get_or_create(user=instance, defaults={"role": "customer"})
+        # Keep admin role in sync for superusers updated outside the API
+        if instance.is_superuser and profile.role == "customer":
+            profile.role = "admin"
+            profile.save(update_fields=["role"])

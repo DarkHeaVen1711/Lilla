@@ -342,17 +342,24 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     phone = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         from django.contrib.auth.models import User
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone']
-        read_only_fields = ['id', 'phone']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'role']
+        read_only_fields = ['id', 'phone', 'role']
 
     def get_phone(self, obj):
         if '@' not in obj.username:
             return obj.username
         return ''
+
+    def get_role(self, obj):
+        try:
+            return obj.userprofile.role
+        except Exception:
+            return "customer"
 
     def validate_email(self, value):
         from django.contrib.auth.models import User
