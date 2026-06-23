@@ -4,8 +4,7 @@ from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
-    CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView, ReviewHelpfulVoteView,
-    AdminUserRoleUpdateView
+    AdminUserRoleUpdateView, AdminProductApproveDeletionView, AdminProductRejectDeletionView
 )
 from .views_payments import CreatePaymentIntentView, StripeWebhookView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -30,6 +29,8 @@ urlpatterns = [
     path('admin/users/<int:id>/role/', AdminUserRoleUpdateView.as_view(), name='admin-user-role'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
     path('admin/stock-adjustments/', StockAdjustmentListView.as_view(), name='admin-stock-adjustments'),
+    path('admin/products/<str:pk>/approve-deletion/', AdminProductApproveDeletionView.as_view(), name='admin-product-approve-deletion'),
+    path('admin/products/<str:pk>/reject-deletion/', AdminProductRejectDeletionView.as_view(), name='admin-product-reject-deletion'),
     path('payments/create-intent/', CreatePaymentIntentView.as_view(), name='payments-create-intent'),
     path('payments/webhook/', StripeWebhookView.as_view(), name='payments-webhook'),
     path('orders/', OrderCreateView.as_view(), name='order-create'),
