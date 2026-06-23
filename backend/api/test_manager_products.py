@@ -77,6 +77,49 @@ class ManagerProductCRUDTest(APITestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
+    def test_manager_can_create_product_with_image_file(self):
+        self.client.force_authenticate(user=self.manager)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # 1x1 pixel GIF
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9'
+            b'\x04\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00'
+            b'\x00\x02\x02\x4c\x01\x00\x3b'
+        )
+        img_file = SimpleUploadedFile("test_product.gif", small_gif, content_type="image/gif")
+        payload = {
+            "id": "new-product-file-mgr",
+            "slug": "new-product-file-mgr",
+            "name": "Manager Image Product",
+            "price": "19.99",
+            "category": self.cat_id,
+            "stock": 50,
+            "image_file": img_file,
+        }
+        url = reverse("product-list")
+        res = self.client.post(url, payload, format="multipart")
+        self.assertIn(res.status_code, [201, 200])
+        product = Product.objects.get(id="new-product-file-mgr")
+        self.assertTrue(product.image_file.name.endswith(".gif"))
+        self.assertTrue(product.image.endswith(product.image_file.url))
+
+    def test_manager_can_update_product_image_file(self):
+        self.client.force_authenticate(user=self.manager)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9'
+            b'\x04\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00'
+            b'\x00\x02\x02\x4c\x01\x00\x3b'
+        )
+        img_file = SimpleUploadedFile("updated_product.gif", small_gif, content_type="image/gif")
+        url = reverse("product-detail", kwargs={"slug": self.product.slug})
+        res = self.client.patch(url, {"image_file": img_file}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.product.refresh_from_db()
+        self.assertTrue(self.product.image_file.name.endswith(".gif"))
+        self.assertTrue(self.product.image.endswith(self.product.image_file.url))
+
+
 
 class SoftDeleteWorkflowTest(APITestCase):
     """Manager DELETE → pending_deletion (202). Admin approve/reject cycle."""
@@ -151,3 +194,100 @@ class SoftDeleteWorkflowTest(APITestCase):
         self.client.force_authenticate(user=self.manager)
         res = self.client.post(self._approve_url())
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class CategoriesEndpointTest(APITestCase):
+    """Categories endpoint optionally returns cosmetic concerns."""
+
+    def test_categories_normal_returns_list(self):
+        res = self.client.get(reverse("category-list"))
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.data, list)
+
+    def test_categories_with_concerns_returns_dict(self):
+        url = reverse("category-list") + "?include_concerns=true"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.data, dict)
+        self.assertIn("categories", res.data)
+        self.assertIn("concerns", res.data)
+        self.assertIsInstance(res.data["categories"], list)
+        self.assertIsInstance(res.data["concerns"], list)
+        self.assertEqual(len(res.data["concerns"]), 8)
+
+
+from unittest.mock import patch, MagicMock
+
+class DescriptionGenerationTest(APITestCase):
+    """Test AI-assisted description generation endpoint."""
+
+    def setUp(self):
+        self.manager = make_user("mgr_ai", "manager")
+        self.customer = make_user("cust_ai", "customer")
+        self.url = reverse("manager-products-generate-description")
+
+    def test_customer_cannot_generate_description(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(self.url, {"name": "Glow Cream"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_generate_description_missing_name(self):
+        self.client.force_authenticate(user=self.manager)
+        res = self.client.post(self.url, {"type": "Serum"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", res.data)
+
+    @patch('os.getenv')
+    def test_manager_generate_description_fallback_mock(self, mock_getenv):
+        # Force ANTHROPIC_API_KEY to be empty/unset
+        mock_getenv.side_effect = lambda key, default=None: "" if key == 'ANTHROPIC_API_KEY' else default
+        
+        self.client.force_authenticate(user=self.manager)
+        payload = {"name": "Hydration Boost", "type": "Moisturizer", "concern": "Dry Skin"}
+        res = self.client.post(self.url, payload, format="json")
+        
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("description", res.data)
+        self.assertIn("Hydration Boost", res.data["description"])
+        self.assertIn("Moisturizer", res.data["description"])
+        self.assertIn("Dry Skin", res.data["description"])
+
+    @patch('os.getenv')
+    @patch('anthropic.Anthropic')
+    def test_manager_generate_description_with_api_key(self, mock_anthropic_class, mock_getenv):
+        # Mock API Key and Model env vars
+        mock_getenv.side_effect = lambda key, default=None: "mock-key" if key == 'ANTHROPIC_API_KEY' else default
+
+        # Mock the Anthropic client instance and return values
+        mock_client = MagicMock()
+        mock_anthropic_class.return_value = mock_client
+        
+        mock_message = MagicMock()
+        mock_text_block = MagicMock()
+        mock_text_block.type = "text"
+        mock_text_block.text = "This is a premium, high-quality description generated by AI."
+        mock_message.content = [mock_text_block]
+        mock_client.messages.create.return_value = mock_message
+
+        self.client.force_authenticate(user=self.manager)
+        payload = {"name": "Rose Serum", "type": "Serum", "concern": "Anti-Aging"}
+        res = self.client.post(self.url, payload, format="json")
+        
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["description"], "This is a premium, high-quality description generated by AI.")
+        mock_client.messages.create.assert_called_once()
+
+    def test_generate_description_throttling(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client.force_authenticate(user=self.manager)
+        # Call 10 times successfully
+        for _ in range(10):
+            res = self.client.post(self.url, {"name": "Test Serum"}, format="json")
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            
+        # 11th call should trigger rate limiting (429)
+        res = self.client.post(self.url, {"name": "Test Serum"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+

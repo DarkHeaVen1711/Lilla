@@ -27,6 +27,7 @@ class Product(SyncableModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     image = models.CharField(max_length=500)
+    image_file = models.ImageField(upload_to='products/', blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     original_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     discount = models.CharField(max_length=50, blank=True, null=True)

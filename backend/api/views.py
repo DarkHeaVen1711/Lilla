@@ -40,6 +40,27 @@ class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    def list(self, request, *args, **kwargs):
+        include_concerns = request.query_params.get('include_concerns', 'false') == 'true'
+        if include_concerns:
+            queryset = self.filter_queryset(self.get_queryset())
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            concerns = [
+                "Acne", "Dry Skin", "Oily Skin", "Sensitive Skin",
+                "Anti-Aging", "Brightening", "Hyperpigmentation", "Redness"
+            ]
+            return Response({
+                "categories": serializer.data,
+                "concerns": concerns
+            })
+        return super().list(request, *args, **kwargs)
+
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category').all()
@@ -547,7 +568,7 @@ stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', os.getenv('STRIPE_SECRET
 transaction_logger = logging.getLogger('lilla.transaction')
 
 class OrderRefundView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def post(self, request, id, *args, **kwargs):
         order = get_object_or_404(Order, id=id)
@@ -591,7 +612,7 @@ class OrderRefundView(APIView):
 
 class OrderStatusUpdateView(APIView):
     """Admin endpoint to update order fulfillment status."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     # Define allowed status transitions as a directed graph
     ALLOWED_TRANSITIONS = {
@@ -864,7 +885,7 @@ class CouponValidateView(APIView):
 
 
 class AdminAnalyticsView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def get(self, request, *args, **kwargs):
         from django.db import models
@@ -954,7 +975,7 @@ class AdminAnalyticsView(APIView):
 
 class StockAdjustmentListView(generics.ListAPIView):
     """Admin endpoint to list all stock adjustment history records."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def get_serializer_class(self):
         from .serializers import StockAdjustmentSerializer
@@ -1051,5 +1072,73 @@ class ReviewHelpfulVoteView(APIView):
                 "message": "Helpful vote added.",
                 "helpful_votes": review.helpful_votes
             }, status=status.HTTP_200_OK)
+
+
+from .throttling import GenerateDescriptionThrottle
+
+class ProductDescriptionGenerateView(APIView):
+    permission_classes = [IsManagerOrAdminRole]
+    throttle_classes = [GenerateDescriptionThrottle]
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name', '').strip()
+        product_type = request.data.get('type', '').strip()
+        concern = request.data.get('concern', '').strip()
+        keywords = request.data.get('keywords', '').strip()
+
+        if not name:
+            return Response(
+                {"error": "Product name is required for description generation."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        model = os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022')
+
+        # Fallback to a mock description if no API key is set (common in tests/dev)
+        if not api_key:
+            concern_part = f" addressing {concern}" if concern else ""
+            keywords_part = f" Features elements of {keywords}." if keywords else ""
+            desc = f"Introducing our premium {name}, a specially formulated {product_type or 'skincare product'}{concern_part}. Carefully crafted to deliver exceptional results and elevate your beauty routine.{keywords_part}"
+            return Response({"description": desc}, status=status.HTTP_200_OK)
+
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=api_key)
+            prompt = (
+                f"You are LILLA's expert copywriter. Write a concise, luxurious product description "
+                f"for a cosmetic/skincare product named '{name}'.\n"
+                f"Product Type: {product_type or 'Unspecified'}\n"
+                f"Skin Concern: {concern or 'General'}\n"
+                f"Additional Keywords/Features: {keywords or 'None'}\n\n"
+                f"Instructions:\n"
+                f"- Write exactly 2 to 4 sentences.\n"
+                f"- Maintain a premium, sophisticated, and on-brand tone.\n"
+                f"- Return ONLY the final description text. Do not include markdown formatting, "
+                f"greeting, intro, or explanation."
+            )
+
+            message = client.messages.create(
+                model=model,
+                max_tokens=300,
+                temperature=0.7,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            content_text = ""
+            for block in message.content:
+                if block.type == "text":
+                    content_text += block.text
+            
+            desc = content_text.strip().strip('"\'')
+            return Response({"description": desc}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to generate description: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
