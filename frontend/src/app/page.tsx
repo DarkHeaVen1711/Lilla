@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import { HeroSwitcher } from "@/components/home/HeroSwitcher";
 import { getHomePageData } from "@/lib/homepageData";
 import { getProducts } from "@/lib/productAdapter";
+import { ClientSearchParamsWatcher } from "@/components/shared/ClientSearchParamsWatcher";
 
 const ShopByCategorySection = dynamic(() =>
   import("@/components/home/ShopByCategorySection").then((mod) => mod.ShopByCategorySection),
@@ -50,6 +51,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-white" id="home">
+      <ClientSearchParamsWatcher />
       <HeroSwitcher initialSlide={1} slides={homePageData.heroSlides} />
       <div id="skin">
         <ShopByCategorySection categories={homePageData.frame19Categories} />

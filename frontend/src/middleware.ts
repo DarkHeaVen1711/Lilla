@@ -103,11 +103,11 @@ export async function middleware(request: NextRequest) {
 
   if (isAdminRoute && role !== "admin") {
     // Non-admins who manually navigate to /admin get redirected home
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/?unauthorized=true", request.url));
   }
 
   if (isManagerRoute && role !== "manager" && role !== "admin") {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/?unauthorized=true", request.url));
   }
 
   return NextResponse.next();
