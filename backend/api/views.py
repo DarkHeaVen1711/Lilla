@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.db.models import Q, Prefetch
 from .models import Category, Product, Order, OrderItem, Combo, StockAdjustment, Favorite, Address, Coupon, Review
 from .serializers import (
@@ -1139,6 +1140,157 @@ class ProductDescriptionGenerateView(APIView):
                 {"error": f"Failed to generate description: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class BulkProductUploadView(APIView):
+    permission_classes = [IsManagerOrAdminRole]
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        filename = file_obj.name.lower()
+        rows = []
+
+        try:
+            if filename.endswith('.csv'):
+                import csv
+                decoded_file = file_obj.read().decode('utf-8-sig').splitlines()
+                reader = csv.DictReader(decoded_file)
+                for row in reader:
+                    if not any(row.values()):
+                        continue
+                    cleaned_row = {str(k).strip().lower(): str(v).strip() for k, v in row.items() if k}
+                    rows.append(cleaned_row)
+            elif filename.endswith('.xlsx'):
+                import openpyxl
+                wb = openpyxl.load_workbook(file_obj)
+                sheet = wb.active
+                headers = [str(cell.value).strip().lower() if cell.value is not None else "" for cell in sheet[1]]
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    if not any(row):
+                        continue
+                    row_dict = {}
+                    for idx, header in enumerate(headers):
+                        if header and idx < len(row):
+                            val = row[idx]
+                            row_dict[header] = str(val).strip() if val is not None else ""
+                    rows.append(row_dict)
+            else:
+                return Response({"error": "Unsupported file format. Please upload a CSV or XLSX file."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Failed to parse file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not rows:
+            return Response({"error": "The uploaded file is empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(rows) > 500:
+            return Response({"error": "Upload exceeds the maximum limit of 500 rows."}, status=status.HTTP_400_BAD_REQUEST)
+
+        errors = []
+        success_reports = []
+
+        from django.utils.text import slugify
+
+        def resolve_category(row_dict):
+            cat_val = row_dict.get('category') or row_dict.get('type')
+            if cat_val:
+                cat = Category.objects.filter(Q(name__iexact=cat_val) | Q(slug__iexact=cat_val)).first()
+                if cat:
+                    return cat
+                slug = slugify(cat_val)
+                cat, _ = Category.objects.get_or_create(name=cat_val, defaults={'slug': slug})
+                return cat
+            cat, _ = Category.objects.get_or_create(name="Skin", defaults={'slug': "skin"})
+            return cat
+
+        class BulkUploadValidationError(Exception):
+            pass
+
+        try:
+            with transaction.atomic():
+                import decimal
+
+                for idx, row_dict in enumerate(rows, start=2):
+                    name = row_dict.get('name', '').strip()
+                    price_val = row_dict.get('price', '').strip()
+                    stock_val = row_dict.get('stock', '0').strip()
+                    description = row_dict.get('description', '').strip()
+                    product_type = row_dict.get('type', '').strip()
+                    concern = row_dict.get('concern', '').strip()
+                    image_url = row_dict.get('image_url') or row_dict.get('image', '').strip()
+
+                    if not name:
+                        errors.append({"row": idx, "reason": "Name is required."})
+                        continue
+
+                    try:
+                        price = decimal.Decimal(price_val)
+                        if price <= 0:
+                            raise ValueError()
+                    except (TypeError, ValueError, decimal.InvalidOperation):
+                        errors.append({"row": idx, "reason": f"Invalid price '{price_val}'; must be a positive number."})
+                        continue
+
+                    try:
+                        stock = int(stock_val)
+                        if stock < 0:
+                            raise ValueError()
+                    except (TypeError, ValueError):
+                        errors.append({"row": idx, "reason": f"Invalid stock '{stock_val}'; must be a non-negative integer."})
+                        continue
+
+                    product_id = row_dict.get('id', '').strip() or slugify(name)
+                    slug = row_dict.get('slug', '').strip() or slugify(name)
+
+                    if Product.objects.filter(id=product_id).exists():
+                        errors.append({"row": idx, "reason": f"Product with ID '{product_id}' already exists."})
+                        continue
+                    if Product.objects.filter(slug=slug).exists():
+                        errors.append({"row": idx, "reason": f"Product with slug '{slug}' already exists."})
+                        continue
+
+                    category = resolve_category(row_dict)
+                    skin_concerns = [concern] if concern else []
+
+                    Product.objects.create(
+                        id=product_id,
+                        slug=slug,
+                        name=name,
+                        price=price,
+                        description=description,
+                        finish=product_type,
+                        skin_concerns=skin_concerns,
+                        image=image_url,
+                        stock=stock,
+                        category=category,
+                        is_active=True
+                    )
+                    success_reports.append({
+                        "row": idx,
+                        "status": "created",
+                        "product_id": product_id
+                    })
+
+                if errors:
+                    raise BulkUploadValidationError("Validation failed")
+
+        except BulkUploadValidationError:
+            return Response({
+                "status": "error",
+                "message": "Bulk upload failed due to validation errors. No products were imported.",
+                "errors": errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Database error during bulk upload: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "status": "success",
+            "message": f"Successfully imported {len(success_reports)} products.",
+            "imported": success_reports
+        }, status=status.HTTP_201_CREATED)
+
 
 
 
