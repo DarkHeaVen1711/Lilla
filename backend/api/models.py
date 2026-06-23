@@ -130,6 +130,30 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.user.username} ({self.role})"
 
+
+class RoleChangeLog(models.Model):
+    """Immutable audit trail for every role promotion or demotion.
+
+    Mirrors the StockAdjustment audit-trail pattern. Records who changed
+    whose role, from what, to what, and when.
+    """
+    changed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="role_changes_made"
+    )
+    target_user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="role_change_history"
+    )
+    old_role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    new_role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return (
+            f"{self.changed_by} changed {self.target_user}: "
+            f"{self.old_role} → {self.new_role} at {self.timestamp}"
+        )
+
+
 class Order(SyncableModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
