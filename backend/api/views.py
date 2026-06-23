@@ -995,3 +995,71 @@ class ReviewHelpfulVoteView(APIView):
             }, status=status.HTTP_200_OK)
 
 
+from .throttling import GenerateDescriptionThrottle
+
+class ProductDescriptionGenerateView(APIView):
+    permission_classes = [IsManagerOrAdminRole]
+    throttle_classes = [GenerateDescriptionThrottle]
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name', '').strip()
+        product_type = request.data.get('type', '').strip()
+        concern = request.data.get('concern', '').strip()
+        keywords = request.data.get('keywords', '').strip()
+
+        if not name:
+            return Response(
+                {"error": "Product name is required for description generation."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        model = os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022')
+
+        # Fallback to a mock description if no API key is set (common in tests/dev)
+        if not api_key:
+            concern_part = f" addressing {concern}" if concern else ""
+            keywords_part = f" Features elements of {keywords}." if keywords else ""
+            desc = f"Introducing our premium {name}, a specially formulated {product_type or 'skincare product'}{concern_part}. Carefully crafted to deliver exceptional results and elevate your beauty routine.{keywords_part}"
+            return Response({"description": desc}, status=status.HTTP_200_OK)
+
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=api_key)
+            prompt = (
+                f"You are LILLA's expert copywriter. Write a concise, luxurious product description "
+                f"for a cosmetic/skincare product named '{name}'.\n"
+                f"Product Type: {product_type or 'Unspecified'}\n"
+                f"Skin Concern: {concern or 'General'}\n"
+                f"Additional Keywords/Features: {keywords or 'None'}\n\n"
+                f"Instructions:\n"
+                f"- Write exactly 2 to 4 sentences.\n"
+                f"- Maintain a premium, sophisticated, and on-brand tone.\n"
+                f"- Return ONLY the final description text. Do not include markdown formatting, "
+                f"greeting, intro, or explanation."
+            )
+
+            message = client.messages.create(
+                model=model,
+                max_tokens=300,
+                temperature=0.7,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            content_text = ""
+            for block in message.content:
+                if block.type == "text":
+                    content_text += block.text
+            
+            desc = content_text.strip().strip('"\'')
+            return Response({"description": desc}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to generate description: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
