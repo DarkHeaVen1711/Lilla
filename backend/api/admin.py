@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, Combo, Order, OrderItem, StockAdjustment, Coupon, Review, UserProfile
+from .models import Category, Product, Combo, Order, OrderItem, StockAdjustment, Coupon, Review, UserProfile, RoleChangeLog
  
 class LowStockFilter(admin.SimpleListFilter):
     title = 'stock status'
@@ -126,3 +126,19 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
+
+
+class RoleChangeLogAdmin(admin.ModelAdmin):
+    list_display = ('changed_by', 'target_user', 'old_role', 'new_role', 'timestamp')
+    list_filter = ('new_role', 'old_role', 'timestamp')
+    search_fields = ('changed_by__username', 'target_user__username')
+    readonly_fields = ('changed_by', 'target_user', 'old_role', 'new_role', 'timestamp')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+admin.site.register(RoleChangeLog, RoleChangeLogAdmin)
