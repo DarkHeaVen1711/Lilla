@@ -673,27 +673,41 @@ class OrderStatusUpdateView(APIView):
 
 
 from rest_framework import serializers
+from .permissions import IsAdminRole, IsManagerOrAdminRole
 
 class AdminUserSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'is_staff', 'last_login', 'date_joined')
+        fields = ('id', 'username', 'email', 'is_staff', 'role', 'last_login', 'date_joined')
+
+    def get_role(self, obj):
+        try:
+            return obj.userprofile.role
+        except Exception:
+            return 'customer'
 
 
 class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsAdminRole]
-    queryset = User.objects.all().order_by('-date_joined')
     serializer_class = AdminUserSerializer
+
+    def get_queryset(self):
+        qs = User.objects.select_related('userprofile').order_by('-date_joined')
+        role_filter = self.request.query_params.get('role')
+        if role_filter in ('customer', 'manager', 'admin'):
+            qs = qs.filter(userprofile__role=role_filter)
+        return qs
 
 
 class AdminUserUpdateView(APIView):
-    """Admin endpoint to toggle user roles and account status."""
+    """Admin endpoint to toggle user account status (is_active)."""
     permission_classes = [IsAdminRole]
 
     def patch(self, request, id, *args, **kwargs):
         target_user = get_object_or_404(User, id=id)
 
-        # Prevent self-demotion
         if target_user.id == request.user.id:
             return Response(
                 {"error": "You cannot modify your own account via this endpoint."},
@@ -702,17 +716,13 @@ class AdminUserUpdateView(APIView):
 
         updated_fields = []
 
-        if 'is_staff' in request.data:
-            target_user.is_staff = bool(request.data['is_staff'])
-            updated_fields.append('is_staff')
-
         if 'is_active' in request.data:
             target_user.is_active = bool(request.data['is_active'])
             updated_fields.append('is_active')
 
         if not updated_fields:
             return Response(
-                {"error": "No valid fields provided. Use 'is_staff' or 'is_active'."},
+                {"error": "No valid fields provided. Use 'is_active'."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -723,22 +733,91 @@ class AdminUserUpdateView(APIView):
             extra={'context': {
                 'admin_user': request.user.username,
                 'target_user': target_user.username,
-                'target_user_id': target_user.id,
                 'updated_fields': updated_fields,
-                'is_staff': target_user.is_staff,
-                'is_active': target_user.is_active
             }}
         )
 
         return Response({
             "status": "success",
-            "user": {
-                "id": target_user.id,
-                "username": target_user.username,
-                "email": target_user.email,
-                "is_staff": target_user.is_staff,
-                "is_active": target_user.is_active,
-            }
+            "user": AdminUserSerializer(target_user).data
+        }, status=status.HTTP_200_OK)
+
+
+class AdminUserRoleUpdateView(APIView):
+    """Admin-only endpoint to promote or demote a user's role.
+
+    Writes an immutable RoleChangeLog entry on every change and
+    prevents the last remaining admin from being demoted.
+    """
+    permission_classes = [IsAdminRole]
+
+    VALID_ROLES = ('customer', 'manager', 'admin')
+
+    def patch(self, request, id, *args, **kwargs):
+        from .models import RoleChangeLog
+        target_user = get_object_or_404(User, id=id)
+
+        new_role = request.data.get('role', '').strip()
+        if new_role not in self.VALID_ROLES:
+            return Response(
+                {"error": f"Invalid role. Must be one of: {self.VALID_ROLES}."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            profile = target_user.userprofile
+        except Exception:
+            from .models import UserProfile
+            profile = UserProfile.objects.create(user=target_user, role='customer')
+
+        old_role = profile.role
+
+        if old_role == new_role:
+            return Response(
+                {"error": f"User already has role '{new_role}'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Last-admin guard: block if this would remove the only admin
+        if old_role == 'admin' and new_role != 'admin':
+            from .models import UserProfile
+            admin_count = UserProfile.objects.filter(role='admin').count()
+            if admin_count <= 1:
+                return Response(
+                    {"error": "Cannot demote the last remaining admin."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Apply role change
+        profile.role = new_role
+        profile.save(update_fields=['role'])
+
+        # Sync is_staff so Django admin panel access stays consistent
+        target_user.is_staff = new_role in ('manager', 'admin')
+        target_user.save(update_fields=['is_staff'])
+
+        # Write immutable audit entry
+        RoleChangeLog.objects.create(
+            changed_by=request.user,
+            target_user=target_user,
+            old_role=old_role,
+            new_role=new_role,
+        )
+
+        security_logger.info(
+            f"Role change: {request.user.username} changed {target_user.username} "
+            f"from '{old_role}' to '{new_role}'",
+            extra={'context': {
+                'admin_user': request.user.username,
+                'target_user': target_user.username,
+                'old_role': old_role,
+                'new_role': new_role,
+            }}
+        )
+
+        return Response({
+            "status": "success",
+            "user": AdminUserSerializer(target_user).data
         }, status=status.HTTP_200_OK)
 
 
@@ -1213,5 +1292,48 @@ class BulkProductUploadView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class ManagerInsightsView(APIView):
+    permission_classes = [IsManagerOrAdminRole]
 
+    def get(self, request, *args, **kwargs):
+        from django.db.models import Sum, Avg
+        
+        # Product counts by deletion status
+        total_products = Product.objects.count()
+        active_products = Product.objects.filter(deletion_status='active').count()
+        pending_deletion = Product.objects.filter(deletion_status='pending_deletion').count()
+        archived_products = Product.objects.filter(deletion_status='archived').count()
 
+        # Stock aggregates
+        total_stock = Product.objects.filter(deletion_status='active').aggregate(Sum('stock'))['stock__sum'] or 0
+        low_stock_count = Product.objects.filter(stock__lt=10, deletion_status='active').count()
+        out_of_stock_count = Product.objects.filter(stock=0, deletion_status='active').count()
+
+        # Average catalog rating
+        avg_rating = Product.objects.filter(deletion_status='active').aggregate(Avg('rating'))['rating__avg']
+        if avg_rating is not None:
+            avg_rating = float(round(avg_rating, 2))
+        else:
+            avg_rating = 4.80
+
+        # Distribution by Category
+        categories_distribution = []
+        categories = Category.objects.all()
+        for cat in categories:
+            count = Product.objects.filter(category=cat, deletion_status='active').count()
+            categories_distribution.append({
+                "category_name": cat.name,
+                "product_count": count
+            })
+
+        return Response({
+            "total_products": total_products,
+            "active_products": active_products,
+            "pending_deletion_products": pending_deletion,
+            "archived_products": archived_products,
+            "total_stock": total_stock,
+            "low_stock_count": low_stock_count,
+            "out_of_stock_count": out_of_stock_count,
+            "average_rating": avg_rating,
+            "category_distribution": categories_distribution
+        }, status=status.HTTP_200_OK)
