@@ -14,10 +14,38 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
+    image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = '__all__'
+
+    def create(self, validated_data):
+        if 'image_file' in validated_data and validated_data['image_file']:
+            if not validated_data.get('image'):
+                validated_data['image'] = 'placeholder'
+        instance = super().create(validated_data)
+        if instance.image_file:
+            request = self.context.get('request')
+            if request:
+                instance.image = request.build_absolute_uri(instance.image_file.url)
+            else:
+                instance.image = instance.image_file.url
+            instance.save(update_fields=['image'])
+        return instance
+
+    def update(self, instance, validated_data):
+        image_file_changed = 'image_file' in validated_data
+        instance = super().update(instance, validated_data)
+        if image_file_changed and instance.image_file:
+            request = self.context.get('request')
+            if request:
+                instance.image = request.build_absolute_uri(instance.image_file.url)
+            else:
+                instance.image = instance.image_file.url
+            instance.save(update_fields=['image'])
+        return instance
+
 
 
 class NestedProductSerializer(serializers.ModelSerializer):

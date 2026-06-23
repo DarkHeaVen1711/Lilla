@@ -40,6 +40,27 @@ class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    def list(self, request, *args, **kwargs):
+        include_concerns = request.query_params.get('include_concerns', 'false') == 'true'
+        if include_concerns:
+            queryset = self.filter_queryset(self.get_queryset())
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            concerns = [
+                "Acne", "Dry Skin", "Oily Skin", "Sensitive Skin",
+                "Anti-Aging", "Brightening", "Hyperpigmentation", "Redness"
+            ]
+            return Response({
+                "categories": serializer.data,
+                "concerns": concerns
+            })
+        return super().list(request, *args, **kwargs)
+
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('category').all()
@@ -547,7 +568,7 @@ stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', os.getenv('STRIPE_SECRET
 transaction_logger = logging.getLogger('lilla.transaction')
 
 class OrderRefundView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def post(self, request, id, *args, **kwargs):
         order = get_object_or_404(Order, id=id)
@@ -591,7 +612,7 @@ class OrderRefundView(APIView):
 
 class OrderStatusUpdateView(APIView):
     """Admin endpoint to update order fulfillment status."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     # Define allowed status transitions as a directed graph
     ALLOWED_TRANSITIONS = {
@@ -659,14 +680,14 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class AdminUserListView(generics.ListAPIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = AdminUserSerializer
 
 
 class AdminUserUpdateView(APIView):
     """Admin endpoint to toggle user roles and account status."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def patch(self, request, id, *args, **kwargs):
         target_user = get_object_or_404(User, id=id)
@@ -785,7 +806,7 @@ class CouponValidateView(APIView):
 
 
 class AdminAnalyticsView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def get(self, request, *args, **kwargs):
         from django.db import models
@@ -875,7 +896,7 @@ class AdminAnalyticsView(APIView):
 
 class StockAdjustmentListView(generics.ListAPIView):
     """Admin endpoint to list all stock adjustment history records."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def get_serializer_class(self):
         from .serializers import StockAdjustmentSerializer
