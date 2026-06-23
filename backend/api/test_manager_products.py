@@ -77,6 +77,49 @@ class ManagerProductCRUDTest(APITestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
+    def test_manager_can_create_product_with_image_file(self):
+        self.client.force_authenticate(user=self.manager)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # 1x1 pixel GIF
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9'
+            b'\x04\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00'
+            b'\x00\x02\x02\x4c\x01\x00\x3b'
+        )
+        img_file = SimpleUploadedFile("test_product.gif", small_gif, content_type="image/gif")
+        payload = {
+            "id": "new-product-file-mgr",
+            "slug": "new-product-file-mgr",
+            "name": "Manager Image Product",
+            "price": "19.99",
+            "category": self.cat_id,
+            "stock": 50,
+            "image_file": img_file,
+        }
+        url = reverse("product-list")
+        res = self.client.post(url, payload, format="multipart")
+        self.assertIn(res.status_code, [201, 200])
+        product = Product.objects.get(id="new-product-file-mgr")
+        self.assertTrue(product.image_file.name.endswith(".gif"))
+        self.assertTrue(product.image.endswith(product.image_file.url))
+
+    def test_manager_can_update_product_image_file(self):
+        self.client.force_authenticate(user=self.manager)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9'
+            b'\x04\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00'
+            b'\x00\x02\x02\x4c\x01\x00\x3b'
+        )
+        img_file = SimpleUploadedFile("updated_product.gif", small_gif, content_type="image/gif")
+        url = reverse("product-detail", kwargs={"slug": self.product.slug})
+        res = self.client.patch(url, {"image_file": img_file}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.product.refresh_from_db()
+        self.assertTrue(self.product.image_file.name.endswith(".gif"))
+        self.assertTrue(self.product.image.endswith(self.product.image_file.url))
+
+
 
 class SoftDeleteWorkflowTest(APITestCase):
     """Manager DELETE → pending_deletion (202). Admin approve/reject cycle."""
@@ -151,3 +194,24 @@ class SoftDeleteWorkflowTest(APITestCase):
         self.client.force_authenticate(user=self.manager)
         res = self.client.post(self._approve_url())
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class CategoriesEndpointTest(APITestCase):
+    """Categories endpoint optionally returns cosmetic concerns."""
+
+    def test_categories_normal_returns_list(self):
+        res = self.client.get(reverse("category-list"))
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.data, list)
+
+    def test_categories_with_concerns_returns_dict(self):
+        url = reverse("category-list") + "?include_concerns=true"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.data, dict)
+        self.assertIn("categories", res.data)
+        self.assertIn("concerns", res.data)
+        self.assertIsInstance(res.data["categories"], list)
+        self.assertIsInstance(res.data["concerns"], list)
+        self.assertEqual(len(res.data["concerns"]), 8)
+
