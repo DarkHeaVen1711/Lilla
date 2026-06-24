@@ -165,7 +165,7 @@ export async function getProducts(options?: {
       results = results.filter((p) => {
         const productConcerns = p.skinConcerns || [];
         return options.concerns!.some((c) =>
-          productConcerns.some((pc) => pc.toLowerCase().includes(c.toLowerCase()))
+          productConcerns.some((pc: string) => pc.toLowerCase().includes(c.toLowerCase()))
         );
       });
     }

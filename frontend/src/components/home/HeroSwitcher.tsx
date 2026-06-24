@@ -11,7 +11,7 @@ import type { StaticImageData } from "next/image";
 import { HeroSection } from "@/components/home/HeroSection";
 
 export interface HeroConfig {
-  id: 1 | 2;
+  id: number;
   layoutType: "text" | "image";
   titleLines?: [string, string];
   description?: string;
@@ -26,7 +26,7 @@ export interface HeroConfig {
 
 interface HeroSwitcherProps {
   slides: HeroConfig[];
-  initialSlide?: 1 | 2;
+  initialSlide?: number;
 }
 
 export function HeroSwitcher({ slides, initialSlide = 1 }: HeroSwitcherProps) {
