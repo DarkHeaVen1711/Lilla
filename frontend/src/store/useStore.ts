@@ -64,6 +64,8 @@ export interface AddressData {
 // ─── Store Shape ─────────────────────────────────────────────────────────────
 
 interface LillaStore {
+  // Hydration flag to indicate store rehydrated from storage
+  hydrated: boolean;
   // User Session
   user: UserState | null;
   loginUser: (identityString: string, isStaff: boolean, metadata?: ProfileFields, role?: UserRole) => void;
@@ -172,8 +174,9 @@ export const useStore = create<LillaStore>()(
     (set, get) => ({
       // ── User ──────────────────────────────────────────────────────────────
       user: null,
+      hydrated: false,
 
-      loginUser: (identityString, isStaff, metadata, role = "customer") => {
+      loginUser: (identityString, isStaff, metadata = {}, role = "customer") => {
         set({
           user: {
             token: "",
@@ -236,14 +239,22 @@ export const useStore = create<LillaStore>()(
                 i.id === product.id ? { ...i, quantity: i.quantity + qty } : i
               )
             : [...state.cart.items, { ...product, quantity: qty }];
-          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
+          const calcs = recalcCart(
+            items,
+            state.cart.couponActive,
+            state.cart.couponDiscountPercentage
+          );
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
       removeFromCart: (itemId) =>
         set((state) => {
           const items = state.cart.items.filter((i) => i.id !== itemId);
-          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
+          const calcs = recalcCart(
+            items,
+            state.cart.couponActive,
+            state.cart.couponDiscountPercentage
+          );
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
@@ -255,7 +266,11 @@ export const useStore = create<LillaStore>()(
               : state.cart.items.map((i) =>
                   i.id === itemId ? { ...i, quantity } : i
                 );
-          const calcs = recalcCart(items, state.cart.couponActive, state.cart.couponDiscountPercentage);
+          const calcs = recalcCart(
+            items,
+            state.cart.couponActive,
+            state.cart.couponDiscountPercentage
+          );
           return { cart: { ...state.cart, items, ...calcs } };
         }),
 
@@ -289,7 +304,11 @@ export const useStore = create<LillaStore>()(
           if (res.ok && data.valid) {
             set((state) => {
               const discountPercent = Number(data.discount_percentage) || 0;
-              const calcs = recalcCart(state.cart.items, true, discountPercent);
+              const calcs = recalcCart(
+                state.cart.items,
+                true,
+                discountPercent
+              );
               return {
                 cart: {
                   ...state.cart,
@@ -300,7 +319,10 @@ export const useStore = create<LillaStore>()(
                 },
               };
             });
-            return { success: true, message: `${data.code} applied! ${data.discount_percentage}% discount activated.` };
+            return {
+              success: true,
+              message: `${data.code} applied! ${data.discount_percentage}% discount activated.`,
+            };
           } else {
             return { success: false, message: data.message || "Invalid coupon code." };
           }
@@ -318,7 +340,6 @@ export const useStore = create<LillaStore>()(
       flushFrozenIntent: () => {
         const intent = get().frozenIntent;
         if (!intent) return;
-        // Execute the cached action
         if (intent.actionType === "ADD_TO_CART") {
           get().addToCart(intent.payload, intent.payload.quantity);
         }
@@ -393,7 +414,8 @@ export const useStore = create<LillaStore>()(
         const convertedTotal = cart.orderTotal * rate;
 
         const orderPayload = {
-          user_identifier: billingAddress.email || billingAddress.phone || "guest@lilla.com",
+          user_identifier:
+            billingAddress.email || billingAddress.phone || "guest@lilla.com",
           shipping_name: `${billingAddress.firstName} ${billingAddress.lastName}`.trim() || "Guest User",
           shipping_address: `${billingAddress.address}, ${billingAddress.state}, ${billingAddress.country}`.trim(),
           shipping_city: billingAddress.city || "New York",
@@ -402,7 +424,7 @@ export const useStore = create<LillaStore>()(
           payment_method: paymentMethod,
           coupon_code: cart.couponCode,
           currency: currency || "USD",
-          items: cart.items.map(item => ({
+          items: cart.items.map((item) => ({
             product_id: item.id,
             product_name: item.name,
             price: (item.price * rate).toFixed(2),
@@ -418,7 +440,9 @@ export const useStore = create<LillaStore>()(
 
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.detail || errorData.error || "Failed to create order");
+          throw new Error(
+            errorData.detail || errorData.error || "Failed to create order"
+          );
         }
 
         return await res.json();
@@ -428,12 +452,13 @@ export const useStore = create<LillaStore>()(
         const { cart, clearCart, clearCheckoutForm } = get();
         const orderWithImages = {
           ...orderData,
-          items: orderData.items?.map((item: Record<string, unknown>) => ({
-            ...item,
-            image: cart.items.find((c) => c.id === item.product_id)?.image || null,
-          })) ?? [],
+          items:
+            orderData.items?.map((item: Record<string, unknown>) => ({
+              ...item,
+              image:
+                cart.items.find((c) => c.id === item.product_id)?.image || null,
+            })) ?? [],
         };
-
         localStorage.setItem("lilla-last-order", JSON.stringify(orderWithImages));
         clearCart();
         clearCheckoutForm();
@@ -445,7 +470,6 @@ export const useStore = create<LillaStore>()(
       addToCompare: (product) => {
         const { compareProducts } = get();
         if (compareProducts.some((p) => p.id === product.id)) {
-          // Dynamic import or check for toast
           try {
             const { toast } = require("sonner");
             toast.error("Product already in comparison list.");
@@ -475,6 +499,7 @@ export const useStore = create<LillaStore>()(
       name: "lilla-store",
       partialize: (state) => ({
         user: state.user,
+        hydrated: state.hydrated,
         cart: state.cart,
         currency: state.currency,
         rates: state.rates,
@@ -486,6 +511,12 @@ export const useStore = create<LillaStore>()(
           saveAddress: state.checkoutForm.saveAddress,
         },
       }),
+      // onRehydrateStorage returns a callback that receives the rehydrated state
+      onRehydrateStorage: () => (state, error) => {
+        if (state && !error) {
+          state.hydrated = true;
+        }
+      },
     }
   )
 );
