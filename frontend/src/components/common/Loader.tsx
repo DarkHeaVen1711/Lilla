@@ -4,15 +4,13 @@ import React from 'react';
 import styled from 'styled-components';
 
 interface LoaderProps {
-  /** Base size of the spinner in pixels (default: 9) */
   size?: number;
-  /** Color of the spinner bars (default: #000000) */
   color?: string;
 }
 
-const Loader: React.FC<LoaderProps> = ({ size = 9, color = '#000000' }) => {
+const Loader: React.FC<LoaderProps> = () => {
   return (
-    <StyledWrapper $size={size} $color={color}>
+    <StyledWrapper>
       <div className="spinner">
         <div />   
         <div />    
@@ -27,24 +25,20 @@ const Loader: React.FC<LoaderProps> = ({ size = 9, color = '#000000' }) => {
       </div>
     </StyledWrapper>
   );
-};
+}
 
-const StyledWrapper = styled.div<{ $size: number; $color: string }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
+const StyledWrapper = styled.div`
   .spinner {
-    position: relative;
-    width: ${({ $size }) => $size}px;
-    height: ${({ $size }) => $size}px;
+    position: absolute;
+    width: 9px;
+    height: 9px;
   }
 
   .spinner div {
     position: absolute;
     width: 50%;
     height: 150%;
-    background: ${({ $color }) => $color};
+    background: #000000;
     transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1%));
     animation: spinner-fzua35 1s calc(var(--delay) * 1s) infinite ease;
   }
