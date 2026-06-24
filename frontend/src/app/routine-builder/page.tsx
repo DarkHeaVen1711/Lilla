@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Sparkles, ChevronRight, ChevronLeft, Check, Loader2, ShoppingBag, Droplet, Sun, Moon, Sparkle, RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m as motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
 import { Price } from "@/components/shared/Price";
@@ -201,7 +201,7 @@ export default function RoutineBuilderPage() {
   const discountedBundlePrice = totalBundlePrice * 0.85;
 
   return (
-    <main className="min-h-screen bg-brand-bg-cream pt-[110px] pb-24 px-6 md:px-12 font-sans text-black">
+    <main className="min-h-screen bg-brand-bg-cream pt-8 pb-24 px-6 md:px-12 font-sans text-black">
       <div className="max-w-[1000px] mx-auto">
         <AnimatePresence mode="wait">
           {/* 1. QUIZ RUNNING STATE */}

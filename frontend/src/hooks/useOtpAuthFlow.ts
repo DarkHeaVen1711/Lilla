@@ -61,6 +61,10 @@ export function useOtpAuthFlow() {
         setError(data.detail || data.error || "Failed to send OTP code.");
         return false;
       }
+      if (data.otp) {
+        setDevOtp(data.otp);
+        alert(`Verification OTP code: ${data.otp}`);
+      }
       setStep("otp");
       return true;
     } catch (err) {

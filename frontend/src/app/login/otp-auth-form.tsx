@@ -25,6 +25,7 @@ export function OtpAuthForm() {
     isValid,
     handleSendOtp,
     handleVerifyOtp,
+    devOtp,
   } = useOtpAuthFlow();
   
   const otpRefs = [
@@ -191,6 +192,20 @@ export function OtpAuthForm() {
                 <Edit3 className="w-4 h-4" />
               </button>
             </div>
+
+            {devOtp && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-[6px] flex items-center gap-3"
+              >
+                <span className="text-amber-600 text-lg">🔒</span>
+                <div>
+                  <p className="text-amber-800 text-xs font-semibold uppercase tracking-wide">Dev Mode — OTP</p>
+                  <p className="text-amber-900 text-2xl font-black tracking-[0.15em]">{devOtp}</p>
+                </div>
+              </motion.div>
+            )}
 
             <form onSubmit={(e) => handleVerifyOtp(e, () => { window.location.href = "/"; })} className="flex flex-col gap-6">
               <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-start">

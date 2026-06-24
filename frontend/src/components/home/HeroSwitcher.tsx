@@ -42,7 +42,7 @@ export function HeroSwitcher({ slides, initialSlide = 1 }: HeroSwitcherProps) {
   };
 
   return (
-    <section className="w-full max-w-[1440px] mx-auto px-5 md:px-10 lg:px-[60px] pt-16 lg:pt-[60px] pb-16 lg:pb-[60px] font-sans relative z-10">
+    <section className="w-full max-w-[1440px] mx-auto px-5 md:px-10 lg:px-[60px] pt-0 sm:pt-4 lg:pt-5 pb-16 lg:pb-[60px] font-sans relative z-10">
       <div className="w-full mx-auto relative">
         <Swiper
           modules={[Autoplay, EffectFade]}

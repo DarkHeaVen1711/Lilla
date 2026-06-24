@@ -40,7 +40,7 @@ export default async function StaticContentPage({
   }
 
   return (
-    <main className="min-h-screen bg-brand-bg-warm px-5 md:px-10 pt-28 md:pt-36 pb-12 md:pb-16">
+    <main className="min-h-screen bg-brand-bg-warm px-5 md:px-10 pt-8 md:pt-12 pb-12 md:pb-16">
       <div className="mx-auto max-w-[1440px]">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-black/50">Page</p>
         <h1 className="mt-3 text-4xl font-normal font-serif text-black md:text-6xl">{page.title}</h1>

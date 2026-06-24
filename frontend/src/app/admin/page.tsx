@@ -410,7 +410,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col lg:flex-row font-sans">
       {/* Sidebar */}
-      <aside className="w-full lg:w-64 shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-gray-100 flex flex-col p-6 pt-28 lg:pt-32">
+      <aside className="w-full lg:w-64 shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-gray-100 flex flex-col p-6 pt-6 lg:pt-8">
         <div className="flex items-center gap-2 mb-8 px-2">
           <LayoutDashboard className="w-5 h-5 text-gray-900" />
           <h2 className="font-bold text-gray-900 text-lg">Admin Panel</h2>
@@ -437,7 +437,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 lg:p-12 pt-6 lg:pt-32 max-w-[1200px]">
+      <main className="flex-1 p-6 lg:p-12 pt-6 lg:pt-8 max-w-[1200px]">
         {activeTab === "overview" && (
           <div className="flex flex-col gap-8">
             <h1 className="font-serif text-3xl text-black">Dashboard Overview</h1>

@@ -44,9 +44,13 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         <AnimationProvider>
           <CommerceProvider>
-            <AnnouncementBar text={homePageData.announcementBarText} />
-            <Navbar links={homePageData.navLinks} />
-            {children}
+            <header className="fixed top-0 left-0 w-full z-50 flex flex-col">
+              <AnnouncementBar text={homePageData.announcementBarText} />
+              <Navbar links={homePageData.navLinks} />
+            </header>
+            <div className="pt-[148px] sm:pt-[120px]">
+              {children}
+            </div>
             <Footer
               newsletterTitle={homePageData.footer.newsletterTitle}
               columns={homePageData.footer.columns}

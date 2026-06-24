@@ -225,6 +225,8 @@ class DescriptionGenerationTest(APITestCase):
         self.manager = make_user("mgr_ai", "manager")
         self.customer = make_user("cust_ai", "customer")
         self.url = reverse("manager-products-generate-description")
+        from django.core.cache import cache
+        cache.clear()
 
     def test_customer_cannot_generate_description(self):
         self.client.force_authenticate(user=self.customer)

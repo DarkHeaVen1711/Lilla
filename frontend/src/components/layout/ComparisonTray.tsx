@@ -5,7 +5,7 @@ import Image from "next/image";
 import { GitCompare, X, ShoppingCart, Star, Plus, Trash2 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { Price } from "@/components/shared/Price";
-import { motion, AnimatePresence } from "framer-motion";
+import { m as motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 export function ComparisonTray() {

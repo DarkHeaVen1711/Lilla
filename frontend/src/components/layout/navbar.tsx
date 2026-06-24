@@ -127,7 +127,7 @@ export function Navbar({ links }: NavbarProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 h-[80px] bg-white/90 backdrop-blur-md border-b border-transparent transition-all duration-300 flex items-center px-5 lg:px-12 font-sans">
+    <div className="w-full h-[80px] bg-white/90 backdrop-blur-md border-b border-transparent transition-all duration-300 flex items-center px-5 lg:px-12 font-sans">
       <div className="w-full max-w-[1440px] mx-auto flex items-center justify-between">
         {/* Left Navigation Links & Mobile Menu */}
         <div className="flex items-center gap-4 lg:gap-8">
@@ -645,6 +645,6 @@ export function Navbar({ links }: NavbarProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </div>
   );
 }

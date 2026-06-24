@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m as motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/apiClient";
 import { useStore } from "@/store/useStore";
 import { useRouter } from "next/navigation";

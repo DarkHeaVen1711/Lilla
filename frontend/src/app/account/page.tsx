@@ -21,7 +21,7 @@ import {
   Clock,
   Home
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m as motion, AnimatePresence } from "framer-motion";
 
 interface Order {
   id: string;
@@ -488,7 +488,7 @@ export default function AccountDashboard() {
     : "Valued Customer";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FAF8F5] to-white pt-32 pb-24 font-sans text-black">
+    <div className="min-h-screen bg-gradient-to-b from-[#FAF8F5] to-white pt-8 pb-24 font-sans text-black">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-12">
         
         {/* Banner Section */}

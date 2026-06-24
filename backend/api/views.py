@@ -315,7 +315,7 @@ class HomepageDataView(APIView):
                     "description": "Explore lush formulas designed for every tone and texture.",
                     "backgroundImage": "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women-posing-with-self-love-her-body%201-y6SDjvPIomR8ekAwIR7vUaFNOexzZ2.png",
                     "backgroundAlt": "Two women embracing natural beauty",
-                    "backgroundColor": "bg-[#D3D3D3]"
+                    "backgroundColor": "bg-brand-bg-hero-default"
                 },
                 {
                     "id": 2,
@@ -490,7 +490,8 @@ class RequestOTPView(APIView):
         
         return Response({
             "detail": "OTP requested successfully.",
-            "identity": identity
+            "identity": identity,
+            "otp": pin
         }, status=status.HTTP_200_OK)
 
 
