@@ -6,16 +6,20 @@ import { apiFetch } from "@/lib/apiClient";
 
 export default function NewProductPage() {
   const [categories, setCategories] = useState<any[]>([]);
+  const [availableConcerns, setAvailableConcerns] = useState<string[]>([]);
+  const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await apiFetch("/api/categories/?include_concerns=true");
+        const res = await apiFetch("/api/manager/products/form-metadata/");
         if (!res.ok) throw new Error("Failed to load form metadata.");
         const data = await res.json();
-        setCategories(data.categories || data);
+        setCategories(data.categories || []);
+        setAvailableConcerns(data.skin_concerns || []);
+        setAvailableIngredients(data.key_ingredients || []);
       } catch (e: any) {
         setError(e.message || "Failed to load form metadata.");
       } finally {
@@ -56,8 +60,14 @@ export default function NewProductPage() {
           <h1 className="text-3xl font-bold tracking-tight font-sans">Add Product</h1>
           <p className="text-zinc-400 mt-1 text-sm">Create a new item in your store</p>
         </div>
-        <ProductForm categories={categories} mode="create" />
+        <ProductForm
+          categories={categories}
+          availableConcerns={availableConcerns}
+          availableIngredients={availableIngredients}
+          mode="create"
+        />
       </div>
     </div>
   );
 }
+
