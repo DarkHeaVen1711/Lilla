@@ -85,6 +85,12 @@ class Product(SyncableModel):
         indexes = [
             models.Index(fields=['slug']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(stock__gte=0),
+                name='product_stock_non_negative'
+            )
+        ]
 
 
 class Combo(SyncableModel):
