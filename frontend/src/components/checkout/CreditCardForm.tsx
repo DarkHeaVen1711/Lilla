@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader } from "@/components/ui/Loader";
 import { useStore } from "@/store/useStore";
 import { apiFetch } from "@/lib/apiClient";
 import { Price } from "@/components/shared/Price";
@@ -194,7 +194,7 @@ export function CreditCardForm() {
           disabled={loading || !stripe || !elements}
           className="w-full h-[56px] bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors mt-4 flex items-center justify-center disabled:bg-gray-500"
         >
-          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Place order"}
+          {loading ? <Loader size="sm" className="text-white" /> : "Place order"}
         </button>
       </div>
     </div>
