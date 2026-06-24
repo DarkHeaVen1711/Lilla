@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Sparkles, ChevronRight, ChevronLeft, Check, Loader2, ShoppingBag, Droplet, Sun, Moon, Sparkle, RefreshCw } from "lucide-react";
+import { Sparkles, ChevronRight, ChevronLeft, Check, ShoppingBag, Droplet, Sun, Moon, RefreshCw } from "lucide-react";
+import { Loader } from "@/components/ui/Loader";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { getProducts, type FrontendProduct } from "@/lib/productAdapter";
@@ -289,9 +290,8 @@ export default function RoutineBuilderPage() {
               exit={{ opacity: 0 }}
               className="bg-white rounded-3xl p-12 shadow-sm border border-gray-100/50 flex flex-col justify-center items-center text-center min-h-[500px]"
             >
-              <div className="relative mb-6">
-                <Sparkle className="w-12 h-12 text-brand-primary animate-spin duration-3000" />
-                <div className="absolute inset-0 m-auto w-3 h-3 bg-black rounded-full animate-ping"></div>
+              <div className="mb-6">
+                <Loader size="lg" className="text-brand-primary" />
               </div>
               <h2 className="font-serif text-3xl mb-3">Customizing your routine...</h2>
               <p className="text-gray-400 text-sm font-semibold max-w-sm">

@@ -9,7 +9,6 @@ import {
   ShoppingBag, 
   MapPin, 
   User as UserIcon, 
-  Loader2, 
   Plus, 
   Trash2, 
   Edit3, 
@@ -21,6 +20,7 @@ import {
   Clock,
   Home
 } from "lucide-react";
+import { Loader } from "@/components/ui/Loader";
 import { m as motion, AnimatePresence } from "framer-motion";
 
 interface Order {
@@ -651,7 +651,7 @@ export default function AccountDashboard() {
                       disabled={profileSaving}
                       className="bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 font-bold uppercase tracking-wider text-xs py-4 px-8 rounded-full transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
                     >
-                      {profileSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {profileSaving && <Loader size="xs" className="text-white" />}
                       Save Profile
                     </button>
                   </form>
@@ -680,7 +680,7 @@ export default function AccountDashboard() {
 
                   {loadingAddresses ? (
                     <div className="py-20 flex justify-center items-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                      <Loader size="md" className="text-brand-primary" />
                     </div>
                   ) : addresses.length === 0 ? (
                     <div className="py-16 text-center border border-dashed border-gray-200 rounded-2xl flex flex-col items-center max-w-md mx-auto">
@@ -775,7 +775,7 @@ export default function AccountDashboard() {
 
                   {loadingOrders ? (
                     <div className="py-20 flex justify-center items-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                      <Loader size="md" className="text-brand-primary" />
                     </div>
                   ) : orders.length === 0 ? (
                     <div className="py-16 text-center border border-dashed border-gray-200 rounded-2xl flex flex-col items-center max-w-md mx-auto">
@@ -1033,7 +1033,7 @@ export default function AccountDashboard() {
                     disabled={addrSaving}
                     className="bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 font-bold uppercase tracking-wider text-xs py-3 px-6 rounded-full transition-all flex items-center gap-2"
                   >
-                    {addrSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {addrSaving && <Loader size="xs" className="text-white" />}
                     Save Address
                   </button>
                 </div>
