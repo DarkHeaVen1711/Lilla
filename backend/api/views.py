@@ -1381,3 +1381,40 @@ class ManagerInsightsView(APIView):
             "average_rating": avg_rating,
             "category_distribution": categories_distribution
         }, status=status.HTTP_200_OK)
+
+
+class ManagerProductFormMetadataView(APIView):
+    permission_classes = [IsManagerOrAdminRole]
+
+    def get(self, request, *args, **kwargs):
+        categories = Category.objects.all()
+        categories_data = CategorySerializer(categories, many=True).data
+
+        skin_concerns_set = set()
+        key_ingredients_set = set()
+
+        for concerns, ingredients in Product.objects.all().values_list('skin_concerns', 'key_ingredients'):
+            if concerns:
+                if isinstance(concerns, list):
+                    for c in concerns:
+                        skin_concerns_set.add(c)
+                elif isinstance(concerns, str):
+                    skin_concerns_set.add(concerns)
+            if ingredients:
+                if isinstance(ingredients, list):
+                    for i in ingredients:
+                        key_ingredients_set.add(i)
+                elif isinstance(ingredients, str):
+                    key_ingredients_set.add(ingredients)
+
+        if not skin_concerns_set:
+            skin_concerns_set = {"Dryness", "Dullness", "Acne", "Redness", "Anti-aging", "Pores", "Sebum control", "Barrier repair"}
+        if not key_ingredients_set:
+            key_ingredients_set = {"Hyaluronic Acid", "Niacinamide", "Salicylic Acid", "Vitamin C", "Retinol", "Ceramides", "Centella Asiatica"}
+
+        return Response({
+            "categories": categories_data,
+            "skin_concerns": sorted(list(skin_concerns_set)),
+            "key_ingredients": sorted(list(key_ingredients_set))
+        }, status=status.HTTP_200_OK)
+

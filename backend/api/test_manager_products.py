@@ -293,3 +293,96 @@ class DescriptionGenerationTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
 
+class AutoSlugAndDefaultIDTest(APITestCase):
+    def setUp(self):
+        self.manager = make_user("mgr_slug_test", "manager")
+        self.cat = Category.objects.get_or_create(name="Skin", slug="skin")[0]
+
+    def test_auto_generate_slug_and_id(self):
+        self.client.force_authenticate(user=self.manager)
+        payload = {
+            "name": "Super Hydra Serum",
+            "price": "25.00",
+            "category": self.cat.id,
+            "stock": 30,
+        }
+        res = self.client.post(reverse("product-list"), payload, format="json")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["slug"], "super-hydra-serum")
+        self.assertEqual(res.data["id"], "super-hydra-serum")
+
+    def test_auto_generate_slug_uniqueness_counter(self):
+        self.client.force_authenticate(user=self.manager)
+        # Create first product
+        payload1 = {
+            "name": "Super Hydra Serum",
+            "price": "25.00",
+            "category": self.cat.id,
+            "stock": 30,
+        }
+        res1 = self.client.post(reverse("product-list"), payload1, format="json")
+        self.assertEqual(res1.status_code, 201)
+        self.assertEqual(res1.data["slug"], "super-hydra-serum")
+
+        # Create second product with the same name
+        payload2 = {
+            "name": "Super Hydra Serum",
+            "price": "28.00",
+            "category": self.cat.id,
+            "stock": 20,
+        }
+        res2 = self.client.post(reverse("product-list"), payload2, format="json")
+        self.assertEqual(res2.status_code, 201)
+        self.assertEqual(res2.data["slug"], "super-hydra-serum-1")
+        self.assertEqual(res2.data["id"], "super-hydra-serum-1")
+
+
+class ManagerProductFormMetadataViewTest(APITestCase):
+    def setUp(self):
+        self.manager = make_user("mgr_meta_test", "manager")
+        self.customer = make_user("cust_meta_test", "customer")
+        self.cat1 = Category.objects.get_or_create(name="Cleanser", slug="cleanser")[0]
+        self.cat2 = Category.objects.get_or_create(name="Toner", slug="toner")[0]
+        
+        # Create a product with some concerns and ingredients to test dynamic collection
+        Product.objects.create(
+            id="dummy-prod-1",
+            slug="dummy-prod-1",
+            name="Dummy Prod 1",
+            price="10.00",
+            category=self.cat1,
+            skin_concerns=["Dryness", "Redness"],
+            key_ingredients=["Ceramides", "Centella Asiatica"],
+            stock=10,
+        )
+
+    def test_anonymous_cannot_access_metadata(self):
+        res = self.client.get(reverse("manager-products-form-metadata"))
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_customer_cannot_access_metadata(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.get(reverse("manager-products-form-metadata"))
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_can_access_metadata_and_returns_correct_data(self):
+        self.client.force_authenticate(user=self.manager)
+        res = self.client.get(reverse("manager-products-form-metadata"))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("categories", res.data)
+        self.assertIn("skin_concerns", res.data)
+        self.assertIn("key_ingredients", res.data)
+        
+        # Verify categories are serialized properly
+        categories_slugs = [c["slug"] for c in res.data["categories"]]
+        self.assertIn("cleanser", categories_slugs)
+        self.assertIn("toner", categories_slugs)
+
+        # Verify skin concerns and key ingredients are aggregated correctly
+        self.assertIn("Dryness", res.data["skin_concerns"])
+        self.assertIn("Redness", res.data["skin_concerns"])
+        self.assertIn("Ceramides", res.data["key_ingredients"])
+        self.assertIn("Centella Asiatica", res.data["key_ingredients"])
+
+
+

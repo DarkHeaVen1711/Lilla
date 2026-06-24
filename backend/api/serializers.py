@@ -1,9 +1,11 @@
 import logging
 from django.db import transaction
+from django.utils.text import slugify
 from rest_framework import serializers
 from .models import Category, Product, Order, OrderItem, Combo, Favorite, Address, Review
 
 transaction_logger = logging.getLogger('lilla.transaction')
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,12 +17,26 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    slug = serializers.SlugField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = '__all__'
 
     def create(self, validated_data):
+        if not validated_data.get('slug'):
+            base_slug = slugify(validated_data.get('name', ''))
+            slug = base_slug
+            counter = 1
+            while Product.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            validated_data['slug'] = slug
+
+        if not validated_data.get('id'):
+            validated_data['id'] = validated_data['slug']
+
         if 'image_file' in validated_data and validated_data['image_file']:
             if not validated_data.get('image'):
                 validated_data['image'] = 'placeholder'
@@ -33,6 +49,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 instance.image = instance.image_file.url
             instance.save(update_fields=['image'])
         return instance
+
 
     def update(self, instance, validated_data):
         image_file_changed = 'image_file' in validated_data
