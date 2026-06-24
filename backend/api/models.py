@@ -307,9 +307,6 @@ def update_product_rating_metrics(sender, instance, **kwargs):
     product.reviews = count
     product.save()
 
-from django.db.models.signals import pre_save
-
-@receiver(pre_save)
 def set_unsynced_offline(sender, instance, **kwargs):
     if isinstance(instance, SyncableModel):
         if not cache.get('is_online', True):
