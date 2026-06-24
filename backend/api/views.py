@@ -350,6 +350,48 @@ class HomepageDataView(APIView):
                 { "line1": "Vegan", "line2": "Products" },
                 { "line1": "Clean", "line2": "ingredients" }
             ],
+            "testimonials": [
+                {
+                    "id": "t1",
+                    "name": "Liana Jade",
+                    "avatar": "/images/avatar_liana_jade.png",
+                    "rating": 5,
+                    "text": "it works so faster, literally saw difference in a week, Best gel if you have dull skin.",
+                    "productSlug": "ceo-afterglow-vitamin-c-serum"
+                },
+                {
+                    "id": "t2",
+                    "name": "Sarah Miller",
+                    "avatar": "/images/avatar_sarah_miller.png",
+                    "rating": 5,
+                    "text": "it works so faster, literally saw difference in a week, Best gel if you have dull skin.",
+                    "productSlug": "ceo-afterglow-vitamin-c-serum"
+                },
+                {
+                    "id": "t3",
+                    "name": "Emily Chen",
+                    "avatar": "/images/avatar_emily_chen.png",
+                    "rating": 5,
+                    "text": "it works so faster, literally saw difference in a week, Best gel if you have dull skin.",
+                    "productSlug": "ceo-afterglow-vitamin-c-serum"
+                }
+            ],
+            "latestNews": [
+                {
+                    "id": "n1",
+                    "category": "SKIN CARE",
+                    "title": "How to transform your skin from dull to glowing.",
+                    "image": "/images/Latest_News_1.png",
+                    "slug": "transform-dull-skin"
+                },
+                {
+                    "id": "n2",
+                    "category": "SELF CARE",
+                    "title": "How diet plays a vital role in improving your skin health.",
+                    "image": "/images/Latest_News_2.png",
+                    "slug": "diet-skin-health"
+                }
+            ],
             "footer": {
                 "newsletterTitle": "Be the first one to know about the updates!",
                 "columns": [
