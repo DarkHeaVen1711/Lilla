@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
+import type { UserRole } from "@/store/useStore";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?\d{3,15}$/;
@@ -8,6 +10,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export function useOtpAuthFlow() {
   const loginUser = useStore((s) => s.loginUser);
+  const router = useRouter();
   const [step, setStep] = useState<"input" | "otp">("input");
   const [authMethod, setAuthMethod] = useState("");
   const [countryCode, setCountryCode] = useState("+1");
@@ -110,9 +113,26 @@ export function useOtpAuthFlow() {
         throw new Error("Failed to initialize secure session cookies.");
       }
 
+      // Determine role and store user in Zustand
+      const role: UserRole = (data.user?.role as UserRole) || "customer";
       localStorage.setItem("lilla-user", JSON.stringify(data.user));
-      loginUser(finalAuthMethod, !!data.user?.is_staff, { email: data.user?.email || "" });
+      loginUser(
+        finalAuthMethod,
+        !!data.user?.is_staff,
+        { email: data.user?.email || "" },
+        role
+      );
+
+      // Call caller-provided callback first (e.g. close modal)
       onSuccess();
+
+      // Client-side role-based redirect
+      if (role === "admin") {
+        router.push("/admin/dashboard");
+      } else if (role === "manager") {
+        router.push("/manager/dashboard");
+      }
+
       return true;
     } catch (err: any) {
       console.error("Auth verify OTP error:", err);
