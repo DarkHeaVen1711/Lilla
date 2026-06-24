@@ -2,7 +2,8 @@
 
 import { useRef, useEffect } from "react";
 import { m as motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Loader2, Phone, Mail } from "lucide-react";
+import { X, Edit3, Phone, Mail } from "lucide-react";
+import { Loader } from "@/components/ui/Loader";
 import { useStore } from "@/store/useStore";
 import { useOtpAuthFlow } from "@/hooks/useOtpAuthFlow";
 
@@ -333,7 +334,7 @@ export function AuthModal() {
                         bg-black hover:bg-gray-800
                         disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                     >
-                      {sendLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send OTP"}
+                      {sendLoading ? <Loader size="xs" className="text-white" /> : "Send OTP"}
                     </button>
                   </form>
                 </motion.div>
@@ -417,7 +418,7 @@ export function AuthModal() {
                         bg-black hover:bg-gray-800
                         disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                     >
-                      {verifyLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify OTP"}
+                      {verifyLoading ? <Loader size="xs" className="text-white" /> : "Verify OTP"}
                     </button>
                   </form>
                 </motion.div>
