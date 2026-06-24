@@ -8,6 +8,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { AuthModal } from "@/components/auth/AuthModal";
+import AuthProvider from "@/components/auth/AuthProvider";
 import { ScrollToTopFAB } from "@/components/shared/ScrollToTopFAB";
 import { ComparisonTray } from "@/components/layout/ComparisonTray";
 import { getHomePageData } from "@/lib/homepageData";
@@ -48,9 +49,11 @@ export default async function RootLayout({
               <AnnouncementBar text={homePageData.announcementBarText} />
               <Navbar links={homePageData.navLinks} />
             </header>
-            <div className="pt-[148px] sm:pt-[120px]">
-              {children}
-            </div>
+            <AuthProvider>
+              <div className="pt-[148px] sm:pt-[120px]">
+                {children}
+              </div>
+            </AuthProvider>
             <Footer
               newsletterTitle={homePageData.footer.newsletterTitle}
               columns={homePageData.footer.columns}
