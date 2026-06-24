@@ -453,7 +453,7 @@ export const useStore = create<LillaStore>()(
         const orderWithImages = {
           ...orderData,
           items:
-            orderData.items?.map((item) => ({
+            orderData.items?.map((item: Record<string, unknown>) => ({
               ...item,
               image:
                 cart.items.find((c) => c.id === item.product_id)?.image || null,
@@ -511,9 +511,10 @@ export const useStore = create<LillaStore>()(
           saveAddress: state.checkoutForm.saveAddress,
         },
       }),
-      onRehydrateStorage: (state, error) => {
-        if (!error) {
-          set({ hydrated: true });
+      // onRehydrateStorage returns a callback that receives the rehydrated state
+      onRehydrateStorage: () => (state, error) => {
+        if (state && !error) {
+          state.hydrated = true;
         }
       },
     }
