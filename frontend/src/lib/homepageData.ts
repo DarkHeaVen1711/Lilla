@@ -117,8 +117,8 @@ const LOCAL_HOME_PAGE_DATA = {
   heroSlides: [
     {
       id: 1,
-      layoutType: "text",
-      titleLines: ["Because every skin", "deserves care."],
+      layoutType: "text" as const,
+      titleLines: ["Because every skin", "deserves care."] as [string, string],
       description: "Explore lush formulas designed for every tone and texture.",
       backgroundImage:
         "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women-posing-with-self-love-her-body%201-y6SDjvPIomR8ekAwIR7vUaFNOexzZ2.png",
@@ -127,7 +127,7 @@ const LOCAL_HOME_PAGE_DATA = {
     },
     {
       id: 2,
-      layoutType: "image",
+      layoutType: "image" as const,
       portraitImage: "/images/hero2_1.png",
       portraitAlt: "Skin care routine close-up",
       productImage: "/images/hero2_2.png",

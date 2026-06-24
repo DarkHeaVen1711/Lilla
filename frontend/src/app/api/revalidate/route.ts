@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
     
     // 3. Invoke next/cache tag revalidation
     for (const tag of tags) {
-      revalidateTag(tag);
-      console.log(`[Next.js Revalidation] Revalidated cache tag: ${tag}`);
+      updateTag(tag as string);
+      console.log(`[Next.js Revalidation] Invalidated cache tag: ${tag}`);
     }
     
     return NextResponse.json({ revalidated: true, tags, now: Date.now() }, { status: 200 });

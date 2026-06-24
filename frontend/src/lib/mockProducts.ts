@@ -64,6 +64,7 @@ export interface WooCommerceProduct {
     key: string;
     value: any;
   }>;
+  skinConcerns?: string[];
 }
 
 // Mock database simulating WooCommerce REST API response
@@ -883,7 +884,7 @@ export const MOCK_WOOCOMMERCE_PRODUCTS: WooCommerceProduct[] = [
  * Maps a WooCommerce API product response to the format expected by the frontend UI.
  */
 export function mapWooCommerceProductToFrontend(wpProduct: WooCommerceProduct): FrontendProduct {
-  const meta = (key: string) => wpProduct.meta_data.find((m) => m.key === key)?.value;
+  const meta = (key: string) => wpProduct.meta_data.find((m: { key: string; value: any }) => m.key === key)?.value;
 
   const priceNum = parseFloat(wpProduct.price || "0");
   const regularPriceNum = parseFloat(wpProduct.regular_price || "0");
