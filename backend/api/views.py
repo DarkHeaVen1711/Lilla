@@ -594,6 +594,7 @@ class VerifyOTPView(APIView):
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
+            "role": role,
             "user": {
                 "id": user.id,
                 "username": user.username,
