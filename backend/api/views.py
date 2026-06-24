@@ -64,7 +64,7 @@ class CategoryListView(generics.ListAPIView):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.select_related('category').all()
+    queryset = Product.objects.select_related('category').prefetch_related('product_reviews').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     permission_classes = [IsAdminRoleForDestroy]
@@ -77,7 +77,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from .permissions import get_role
-        queryset = Product.objects.select_related('category').all()
+        queryset = Product.objects.select_related('category').prefetch_related('product_reviews').all()
 
         # Public requests and customers only see active products
         user = self.request.user
@@ -209,7 +209,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def reviews(self, request, slug=None):
         product = self.get_object()
         if request.method == 'GET':
-            reviews = product.product_reviews.all().order_by('-created_at')
+            reviews = product.product_reviews.select_related('user').all().order_by('-created_at')
             serializer = ReviewSerializer(reviews, many=True)
             return Response(serializer.data)
             
@@ -267,7 +267,7 @@ class HomepageDataView(APIView):
     def get(self, request, *args, **kwargs):
         # Fetch categories and products dynamically from the database
         all_categories = Category.objects.all()
-        best_sellers = Product.objects.select_related('category').filter(featured=True)[:6]
+        best_sellers = Product.objects.select_related('category').prefetch_related('product_reviews').filter(featured=True)[:6]
         
         # Pull categories for frame19 and concerns
         frame19 = []
@@ -280,22 +280,22 @@ class HomepageDataView(APIView):
             })
 
         # Prepare products for specific homepage sections
-        deal_products = Product.objects.select_related('category').filter(id__in=[
+        deal_products = Product.objects.select_related('category').prefetch_related('product_reviews').filter(id__in=[
             "ceo-afterglow-vitamin-c-serum", 
             "radiance-pink-daily-serum", 
             "soft-glam-facial-oil"
         ])[:3]
         if not deal_products.exists():
-            deal_products = Product.objects.select_related('category').all()[:3]
+            deal_products = Product.objects.select_related('category').prefetch_related('product_reviews').all()[:3]
 
-        combo_products = Product.objects.select_related('category').filter(id__in=[
+        combo_products = Product.objects.select_related('category').prefetch_related('product_reviews').filter(id__in=[
             "hydration-ritual-set", 
             "brightening-glow-set", 
             "soft-glam-makeup-set",
             "body-care-set"
         ])[:4]
         if not combo_products.exists():
-            combo_products = Product.objects.select_related('category').all()[:4]
+            combo_products = Product.objects.select_related('category').prefetch_related('product_reviews').all()[:4]
 
         # Standard layout response matching Next.js structures
         data = {
@@ -465,7 +465,7 @@ class CategoryWithProductsListView(generics.ListAPIView):
     def get_queryset(self):
         # Optimization: Fetch products and their category in a single query
         # to prevent N+1 serialization queries for category_name and category_slug.
-        active_products = Product.objects.filter(is_active=True).select_related('category')
+        active_products = Product.objects.filter(is_active=True).select_related('category').prefetch_related('product_reviews')
         return Category.objects.prefetch_related(
             Prefetch('products', queryset=active_products)
         )
@@ -477,7 +477,7 @@ class ActiveCombosListView(generics.ListAPIView):
     def get_queryset(self):
         # Optimization: Prefetch products using select_related('category')
         # to ensure no N+1 query is made during nested serialization.
-        combo_products = Product.objects.all().select_related('category')
+        combo_products = Product.objects.all().select_related('category').prefetch_related('product_reviews')
         return Combo.objects.filter(is_active=True, is_promotional=True).prefetch_related(
             Prefetch('products', queryset=combo_products)
         )
