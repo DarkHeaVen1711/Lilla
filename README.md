@@ -2,6 +2,8 @@
 
 LILLA is a high-performance, modern headless e-commerce storefront engineered for premium cosmetic, skincare, and beauty brands. The platform is designed with a detached architecture: a highly interactive Next.js storefront and a robust, secure Django REST Framework backend API.
 
+> **Latest:** June 2026 backend audit resolved six critical production issues — migration conflicts, unscoped signals, audit-trail cascade failures, inventory race conditions, N+1 query avalanches, and a review-rating signal cache bug.
+
 ---
 
 ## 🌟 Comprehensive Feature Set
@@ -31,7 +33,7 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 
 ### 5. Dynamic Performance & Revalidation
 - **On-Demand Cache Revalidation**: Asynchronous Django post-save/post-delete signals send tags to the Next.js revalidation endpoint (`/api/revalidate`), enabling Incremental Static Regeneration (ISR) whenever products or combo packages change.
-- **Eager Loading Database Audit**: All database list queries explicitly chain `.select_related()` and `.prefetch_related()` to eliminate nested N+1 query hits.
+- **Eager Loading Database Audit**: All database list queries explicitly chain `.select_related()` and `.prefetch_related()` to eliminate nested N+1 query hits, including deep prefetching in `CategoryWithProductsListView` and `ActiveCombosListView`.
 - **App Router Resilience & Loading Skeletons**: Integrated instant skeleton screens (`loading.tsx`) and error recovery boundaries (`error.tsx`) for PDP and catalog search paths to improve fault tolerance.
 - **Global Payment Element Error Boundary**: Wrapped the Stripe Elements rendering context in a custom boundary to gracefully handle external JS script load failures.
 
@@ -91,6 +93,21 @@ LILLA is a high-performance, modern headless e-commerce storefront engineered fo
 - **Interactive Multi-Step Quiz**: A dedicated `/routine-builder` page guides users through a step-by-step questionnaire covering skin type, concerns, and goals.
 - **Curated Product Recommendations**: Based on quiz answers, the page surfaces a tailored bundle of skincare and makeup products with potential bundle savings highlighted.
 - **One-Click Bundle Add-to-Cart**: A "Build My Routine" button adds the entire recommended set to the cart in a single action.
+
+---
+
+## 🛡️ Backend Production Fixes (June 2026 Audit)
+
+A systematic production audit identified and resolved the following critical issues across six dedicated fix branches:
+
+| # | Issue | Branch | Status |
+| :- | :---- | :----- | :----- |
+| 1 | **Migration Conflict** — Duplicate `0020_*` leaf nodes caused `InconsistentMigrationHistory` crashes on every deployment. Renumbered migrations linearly (`0021`, `0022`) and rewrote the merge node. | `fix-migration-conflict` | ✅ Merged |
+| 2 | **Unscoped `pre_save` Signal** — `set_unsynced_offline` lacked a `sender=SyncableModel` constraint, executing on every single DB save app-wide. Added `sender` scoping. | `fix-unscoped-signal` | ✅ Merged |
+| 3 | **FK Cascade Audit Trail Destruction** — `StockAdjustment.product` and `RoleChangeLog.changed_by` used `CASCADE` deletes, silently wiping historical audit records. Changed to `SET_NULL` / `PROTECT`. | `fix-foreign-key-cascades` | ✅ Merged |
+| 4 | **Inventory Race Conditions** — `ProductStock` check-and-decrement was non-atomic, allowing overselling under concurrent load. Replaced with `select_for_update()` inside `@transaction.atomic` and added a DB-level `non_negative_stock` constraint. | `fix-inventory-race-conditions` | ✅ Merged |
+| 5 | **N+1 Query Avalanche** — `CategoryWithProductsListView` and `ActiveCombosListView` lacked `prefetch_related` chains for nested reviews, images, and concerns, triggering hundreds of extra queries per request. | `fix-n-plus-one-queries` | ✅ Merged |
+| 6 | **Rating Signal Cache Stale Read** — `update_product_rating_metrics` read from `product.product_reviews.all()`, which returned stale prefetch-cached data. Switched to `Review.objects.filter(product=product)` for a fresh DB aggregate. | `fix-n-plus-one-queries` | ✅ Merged |
 
 ---
 
@@ -300,6 +317,14 @@ python backend/manage.py test api.test_account
 # Order invoice tests
 python backend/manage.py test api.test_invoices
 ```
+
+> **⏳ Pending Tests (Next Session):** The following test scenarios were identified during the June 2026 audit and are queued for implementation:
+> - `test_scoped_signal` — Verify `set_unsynced_offline` only fires on `SyncableModel` saves.
+> - `test_stock_adjustment_set_null` — Confirm `StockAdjustment` records survive product deletion (FK → `SET_NULL`).
+> - `test_role_changelog_protect` — Confirm `RoleChangeLog` raises `ProtectedError` when deleting a referenced user.
+> - `test_concurrent_checkout` — Concurrent stock decrement under `select_for_update` must not allow overselling.
+> - `test_non_negative_stock_constraint` — DB-level constraint must reject negative stock values.
+> - `test_rating_signal_fresh_read` — `update_product_rating_metrics` must return correct aggregates when prefetch cache is present.
 
 ### 2. Frontend Unit Tests (Vitest)
 To execute the frontend unit test suite for the persisted state machine and checkout discount actions:
