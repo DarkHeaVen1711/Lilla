@@ -303,7 +303,9 @@ from django.db.models import Avg
 @receiver(post_delete, sender=Review)
 def update_product_rating_metrics(sender, instance, **kwargs):
     product = instance.product
-    reviews_qs = product.product_reviews.all()
+    if hasattr(product, '_prefetched_objects_cache') and 'product_reviews' in product._prefetched_objects_cache:
+        del product._prefetched_objects_cache['product_reviews']
+    reviews_qs = Review.objects.filter(product=product)
     count = reviews_qs.count()
     if count > 0:
         avg_rating = reviews_qs.aggregate(Avg('rating'))['rating__avg']
