@@ -3,7 +3,8 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { m as motion, AnimatePresence } from "framer-motion";
-import { Loader2, Edit3 } from "lucide-react";
+import { Edit3 } from "lucide-react";
+import { Loader } from "@/components/ui/Loader";
 import logo from "@/images/logo.png";
 import { useOtpAuthFlow } from "@/hooks/useOtpAuthFlow";
 
@@ -166,7 +167,7 @@ export function OtpAuthForm() {
                 disabled={!isValid || isLoading}
                 className="mt-6 w-full h-[52px] flex items-center justify-center text-white text-[16px] font-semibold transition-colors disabled:bg-brand-disabled-gray disabled:cursor-not-allowed bg-black hover:bg-gray-800"
               >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send OTP"}
+                {isLoading ? <Loader size="xs" className="text-white" /> : "Send OTP"}
               </button>
             </form>
           </motion.div>
@@ -239,7 +240,7 @@ export function OtpAuthForm() {
                 disabled={otp.join("").length !== 6 || isLoading}
                 className="mt-2 w-full h-[52px] flex items-center justify-center text-white text-[16px] font-semibold transition-colors disabled:bg-brand-disabled-gray disabled:cursor-not-allowed bg-black hover:bg-gray-800"
               >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify OTP"}
+                {isLoading ? <Loader size="xs" className="text-white" /> : "Verify OTP"}
               </button>
             </form>
           </motion.div>
