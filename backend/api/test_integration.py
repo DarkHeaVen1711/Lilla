@@ -64,9 +64,11 @@ class CriticalPathIntegrationTests(APITestCase):
         }, format='json')
         self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
         
-        # Verify response keys (access, refresh, user)
+        # Verify response keys (access, refresh, role, user)
         self.assertIn("access", verify_response.data)
         self.assertIn("refresh", verify_response.data)
+        self.assertIn("role", verify_response.data)
+        self.assertEqual(verify_response.data["role"], "customer")
         self.assertIn("user", verify_response.data)
         self.assertEqual(verify_response.data["user"]["username"], self.test_email)
         
