@@ -4,7 +4,7 @@ import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
-import Loader from "@/components/common/Loader";
+import { Loader } from "@/components/ui/Loader";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -480,7 +480,7 @@ export default function AdminDashboard() {
                 <div className="h-[320px] w-full mt-2">
                   {!isClient || !analytics ? (
                     <div className="w-full h-full bg-gray-50 rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
-                      <Loader size={14} color="#9CA3AF" />
+                      <Loader size="xs" className="text-gray-400" />
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -601,7 +601,7 @@ export default function AdminDashboard() {
                 <div className="h-[320px] w-full mt-2">
                   {!isClient || !analytics ? (
                     <div className="w-full h-full bg-gray-50 rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold">
-                      <Loader size={14} color="#9CA3AF" />
+                      <Loader size="xs" className="text-gray-400" />
                     </div>
                   ) : analytics.top_products.length === 0 ? (
                     <div className="w-full h-full rounded-xl flex items-center justify-center text-xs text-gray-400 font-semibold border border-dashed border-gray-100">
