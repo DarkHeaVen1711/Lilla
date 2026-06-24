@@ -12,6 +12,8 @@ interface EditProductPageProps {
 
 export default function EditProductPage({ params }: EditProductPageProps) {
   const [categories, setCategories] = useState<any[]>([]);
+  const [availableConcerns, setAvailableConcerns] = useState<string[]>([]);
+  const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,32 +21,41 @@ export default function EditProductPage({ params }: EditProductPageProps) {
   useEffect(() => {
     async function load() {
       try {
-        const [catRes, prodRes] = await Promise.all([
-          apiFetch("/api/categories/?include_concerns=true"),
+        const [metaRes, prodRes] = await Promise.all([
+          apiFetch("/api/manager/products/form-metadata/"),
           apiFetch(`/api/products/${params.slug}/`),
         ]);
 
-        if (!catRes.ok || !prodRes.ok) {
+        if (!metaRes.ok || !prodRes.ok) {
           throw new Error("Failed to load product form data.");
         }
 
-        const catData = await catRes.json();
+        const metaData = await metaRes.json();
         const prodData = await prodRes.json();
 
-        setCategories(catData.categories || catData);
+        setCategories(metaData.categories || []);
+        setAvailableConcerns(metaData.skin_concerns || []);
+        setAvailableIngredients(metaData.key_ingredients || []);
         
         // Map backend product structure to ProductFormData shape
         setProduct({
-          id: prodData.id,
           slug: prodData.slug,
           name: prodData.name,
           price: String(prodData.price),
+          original_price: prodData.original_price ? String(prodData.original_price) : "",
+          discount: prodData.discount || "",
           stock: String(prodData.stock),
           category: prodData.category ? String(prodData.category) : "",
           image: prodData.image || "",
           description: prodData.description || "",
-          concern: prodData.skin_concerns?.[0] || "",
-          type: prodData.finish || "",
+          finish: prodData.finish || "",
+          skin_concerns: prodData.skin_concerns || [],
+          key_ingredients: prodData.key_ingredients || [],
+          shades: prodData.shades || [],
+          application_steps: prodData.application_steps || [],
+          featured: !!prodData.featured,
+          is_active: !!prodData.is_active,
+          is_deal_of_the_day: !!prodData.is_deal_of_the_day,
         });
       } catch (e: any) {
         setError(e.message || "Failed to load product data.");
@@ -86,8 +97,15 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           <h1 className="text-3xl font-bold tracking-tight font-sans">Edit Product</h1>
           <p className="text-zinc-400 mt-1 text-sm">Update product details and specifications</p>
         </div>
-        <ProductForm categories={categories} initial={product} mode="edit" />
+        <ProductForm
+          categories={categories}
+          availableConcerns={availableConcerns}
+          availableIngredients={availableIngredients}
+          initial={product}
+          mode="edit"
+        />
       </div>
     </div>
   );
 }
+

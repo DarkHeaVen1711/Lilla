@@ -128,6 +128,7 @@ export default function ManagerProductsPage() {
               <thead>
                 <tr className="bg-zinc-900/80 text-zinc-400 text-xs uppercase tracking-wide">
                   <th className="px-5 py-3 text-left">Product</th>
+                  <th className="px-5 py-3 text-left">Slug</th>
                   <th className="px-5 py-3 text-left">Price</th>
                   <th className="px-5 py-3 text-left">Stock</th>
                   <th className="px-5 py-3 text-left">Status</th>
@@ -161,6 +162,9 @@ export default function ManagerProductsPage() {
                             </div>
                           </div>
                         </td>
+                        <td className="px-5 py-3.5 text-zinc-400 font-mono text-xs">
+                          {product.slug}
+                        </td>
                         <td className="px-5 py-3.5 text-zinc-300">${product.price}</td>
                         <td className="px-5 py-3.5">
                           <span className={`font-medium ${product.stock < 10 ? "text-amber-400" : "text-white"}`}>
@@ -177,6 +181,14 @@ export default function ManagerProductsPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
+                            <a
+                              href={`/products/${product.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-rose-450 text-rose-400 hover:text-rose-300 transition-colors border border-zinc-700 font-medium"
+                            >
+                              View on site
+                            </a>
                             <Link
                               href={`/manager/products/${product.slug}/edit`}
                               className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-white transition-colors border border-zinc-700"
