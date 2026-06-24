@@ -220,7 +220,7 @@ class OrderItem(SyncableModel):
 
 
 class StockAdjustment(SyncableModel):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_adjustments")
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_adjustments")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     old_stock = models.IntegerField()
     new_stock = models.IntegerField()
