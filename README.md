@@ -316,15 +316,17 @@ python backend/manage.py test api.test_account
 
 # Order invoice tests
 python backend/manage.py test api.test_invoices
+# Audit & security tests
+python backend/manage.py test api.test_audit_cases
 ```
 
-> **⏳ Pending Tests (Next Session):** The following test scenarios were identified during the June 2026 audit and are queued for implementation:
-> - `test_scoped_signal` — Verify `set_unsynced_offline` only fires on `SyncableModel` saves.
-> - `test_stock_adjustment_set_null` — Confirm `StockAdjustment` records survive product deletion (FK → `SET_NULL`).
-> - `test_role_changelog_protect` — Confirm `RoleChangeLog` raises `ProtectedError` when deleting a referenced user.
-> - `test_concurrent_checkout` — Concurrent stock decrement under `select_for_update` must not allow overselling.
-> - `test_non_negative_stock_constraint` — DB-level constraint must reject negative stock values.
-> - `test_rating_signal_fresh_read` — `update_product_rating_metrics` must return correct aggregates when prefetch cache is present.
+> **✓ June 2026 Audit Tests:** The following security and integrity scenarios have been fully implemented in `api.test_audit_cases`:
+> - `test_scoped_signal` — Verifies `set_unsynced_offline` only fires on `SyncableModel` saves.
+> - `test_stock_adjustment_set_null` — Confirms `StockAdjustment` records survive product deletion (FK → `SET_NULL`).
+> - `test_role_changelog_protect` — Confirms `RoleChangeLog` raises `ProtectedError` when deleting a referenced user.
+> - `test_concurrent_checkout` — Verifies concurrent stock decrement under `select_for_update` prevents overselling.
+> - `test_non_negative_stock_constraint` — Verifies DB-level check constraint rejects negative stock values.
+> - `test_rating_signal_fresh_read` — Confirms `update_product_rating_metrics` invalidates prefetch cache on reviews.
 
 ### 2. Frontend Unit Tests (Vitest)
 To execute the frontend unit test suite for the persisted state machine and checkout discount actions:
