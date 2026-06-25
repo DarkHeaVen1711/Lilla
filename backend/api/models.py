@@ -158,10 +158,10 @@ class RoleChangeLog(models.Model):
     whose role, from what, to what, and when.
     """
     changed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name="role_changes_made"
+        User, on_delete=models.PROTECT, related_name="role_changes_made"
     )
     target_user = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name="role_change_history"
+        User, on_delete=models.PROTECT, related_name="role_change_history"
     )
     old_role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     new_role = models.CharField(max_length=20, choices=ROLE_CHOICES)

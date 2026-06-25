@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0022_merge_0020_rolechangelog_0021_product_image_file'),
+        ('api', '0022_product_image_file'),
     ]
 
     operations = [
