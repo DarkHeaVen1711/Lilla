@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { m as motion, AnimatePresence } from "framer-motion";
 import { X, Edit3, Phone, Mail } from "lucide-react";
 import { Loader } from "@/components/ui/Loader";
