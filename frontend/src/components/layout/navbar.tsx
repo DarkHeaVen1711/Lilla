@@ -43,13 +43,7 @@ const makeupMenuItems = [
   { label: "Eyes", image: makeup_menu_5, href: "/shop/makeup/eyes" },
 ];
 
-const makeupMenuItems = [
-  { label: "New Launches", image: makeup_menu_1, href: "/shop/makeup/new-launches" },
-  { label: "Bestsellers", image: makeup_menu_2, href: "/shop/makeup/bestsellers" },
-  { label: "Face", image: makeup_menu_3, href: "/shop/makeup/face" },
-  { label: "Lips", image: makeup_menu_4, href: "/shop/makeup/lips" },
-  { label: "Eyes", image: makeup_menu_5, href: "/shop/makeup/eyes" },
-];
+
 
 type NavDropdownConfig = {
   menuItems: { label: string; image: any; href: string }[];

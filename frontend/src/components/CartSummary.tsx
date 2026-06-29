@@ -6,7 +6,7 @@ import Link from "next/link";
 import { m as motion } from "framer-motion";
 import { X, Percent, ChevronLeft, ChevronRight, Trash2, Tag, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
-import { apiClient } from "@/lib/api/client";
+import { apiFetch } from "@/lib/apiClient";
 
 import { useStore } from "@/store/useStore";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
@@ -32,9 +32,16 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
     async function checkStock() {
       const items = cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity }));
       try {
-        const response = await apiClient.post("/api/cart/check-stock/", { items });
-        if (response.data && response.data.results) {
-          setStockWarnings(response.data.results.filter((r: any) => !r.available));
+        const response = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/cart/check-stock/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
+        if (response.ok) {
+          const data = await response.json().catch(() => null);
+          if (data && data.results) {
+            setStockWarnings(data.results.filter((r: any) => !r.available));
+          }
         }
       } catch (err) {
         console.error("Error checking stock:", err);
