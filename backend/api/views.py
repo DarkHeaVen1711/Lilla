@@ -1476,3 +1476,30 @@ class ManagerProductFormMetadataView(APIView):
             "key_ingredients": sorted(list(key_ingredients_set))
         }, status=status.HTTP_200_OK)
 
+
+class CartStockCheckView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        items = request.data.get('items', [])
+        results = []
+        for item in items:
+            product = Product.objects.filter(id=item.get('product_id')).first()
+            if not product:
+                results.append({'product_id': item.get('product_id'), 'available': False, 'reason': 'not_found'})
+                continue
+            requested_qty = item.get('quantity', 0)
+            if product.stock < requested_qty:
+                results.append({'product_id': product.id, 'available': False, 'reason': 'insufficient_stock', 'in_stock': product.stock, 'requested': requested_qty})
+            else:
+                results.append({'product_id': product.id, 'available': True})
+        return Response({'results': results})
+
+
+def merge_guest_favorites(user, guest_product_ids):
+    from .models import Favorite
+    existing_ids = set(
+        Favorite.objects.filter(user=user, product_id__in=guest_product_ids).values_list("product_id", flat=True)
+    )
+    new_ids = set(guest_product_ids) - existing_ids
+    Favorite.objects.bulk_create([Favorite(user=user, product_id=pid) for pid in new_ids])
+
