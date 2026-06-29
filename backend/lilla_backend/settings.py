@@ -56,7 +56,6 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.SimpleRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/minute',
