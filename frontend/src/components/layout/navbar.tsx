@@ -43,6 +43,23 @@ const makeupMenuItems = [
   { label: "Eyes", image: makeup_menu_5, href: "/shop/makeup/eyes" },
 ];
 
+const makeupMenuItems = [
+  { label: "New Launches", image: makeup_menu_1, href: "/shop/makeup/new-launches" },
+  { label: "Bestsellers", image: makeup_menu_2, href: "/shop/makeup/bestsellers" },
+  { label: "Face", image: makeup_menu_3, href: "/shop/makeup/face" },
+  { label: "Lips", image: makeup_menu_4, href: "/shop/makeup/lips" },
+  { label: "Eyes", image: makeup_menu_5, href: "/shop/makeup/eyes" },
+];
+
+type NavDropdownConfig = {
+  menuItems: { label: string; image: any; href: string }[];
+};
+
+const DROPDOWN_CONFIG: Record<string, NavDropdownConfig> = {
+  "Skin": { menuItems: skinMenuItems },
+  "Makeup": { menuItems: makeupMenuItems },
+};
+
 type NavbarProps = {
   links: HomeSectionLink[];
 };
@@ -102,12 +119,15 @@ export function Navbar({ links }: NavbarProps) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const [activeHover, setActiveHover] = useState<"skin" | "makeup" | null>(null);
-  const [mobileSkinOpen, setMobileSkinOpen] = useState(false);
-  const [mobileMakeupOpen, setMobileMakeupOpen] = useState(false);
+  const [activeHover, setActiveHover] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<Record<string, boolean>>({});
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = (menu: "skin" | "makeup") => {
+  const toggleMobileMenu = (label: string) => {
+    setMobileMenuOpen(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const handleMouseEnter = (menu: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setActiveHover(menu);
   };
@@ -155,45 +175,21 @@ export function Navbar({ links }: NavbarProps) {
                 </div>
                 <div className="flex flex-col gap-6">
                   {links.map((link) => {
-                    if (link.label === "Skin") {
+                    const dropdown = DROPDOWN_CONFIG[link.label];
+                    if (dropdown) {
+                      const isOpen = mobileMenuOpen[link.label];
                       return (
                         <div key={link.label} className="flex flex-col">
                           <button
-                            onClick={() => setMobileSkinOpen(!mobileSkinOpen)}
+                            onClick={() => toggleMobileMenu(link.label)}
                             className="flex items-center justify-between w-full text-[22px] font-medium text-black transition-colors hover:text-brand-primary outline-none"
                           >
-                            <span>Skin</span>
-                            <span className="text-xl font-light">{mobileSkinOpen ? "−" : "+"}</span>
+                            <span>{link.label}</span>
+                            <span className="text-xl font-light">{isOpen ? "−" : "+"}</span>
                           </button>
-                          {mobileSkinOpen && (
+                          {isOpen && (
                             <div className="flex flex-col pl-4 mt-2 gap-3 border-l border-gray-100">
-                              {skinMenuItems.map((sub) => (
-                                <Link
-                                  key={sub.label}
-                                  href={sub.href}
-                                  className="text-lg text-gray-600 hover:text-brand-primary transition-colors"
-                                >
-                                  {sub.label}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (link.label === "Makeup") {
-                      return (
-                        <div key={link.label} className="flex flex-col">
-                          <button
-                            onClick={() => setMobileMakeupOpen(!mobileMakeupOpen)}
-                            className="flex items-center justify-between w-full text-[22px] font-medium text-black transition-colors hover:text-brand-primary outline-none"
-                          >
-                            <span>Makeup</span>
-                            <span className="text-xl font-light">{mobileMakeupOpen ? "−" : "+"}</span>
-                          </button>
-                          {mobileMakeupOpen && (
-                            <div className="flex flex-col pl-4 mt-2 gap-3 border-l border-gray-100">
-                              {makeupMenuItems.map((sub) => (
+                              {dropdown.menuItems.map((sub) => (
                                 <Link
                                   key={sub.label}
                                   href={sub.href}
@@ -266,15 +262,14 @@ export function Navbar({ links }: NavbarProps) {
           {/* Desktop Links */}
           <div className="hidden lg:flex items-center gap-8 h-full">
             {links.map((link) => {
-              const isSkin = link.label === "Skin";
-              const isMakeup = link.label === "Makeup";
-              const isActive = (isSkin && activeHover === "skin") || (isMakeup && activeHover === "makeup");
+              const dropdown = DROPDOWN_CONFIG[link.label];
+              const isActive = dropdown && activeHover === link.label;
               
               return (
                 <div
                   key={link.label}
-                  onMouseEnter={isSkin ? () => handleMouseEnter("skin") : isMakeup ? () => handleMouseEnter("makeup") : undefined}
-                  onMouseLeave={isSkin || isMakeup ? handleMouseLeave : undefined}
+                  onMouseEnter={dropdown ? () => handleMouseEnter(link.label) : undefined}
+                  onMouseLeave={dropdown ? handleMouseLeave : undefined}
                   className="flex items-center h-[80px]"
                 >
                   <Link
@@ -500,7 +495,7 @@ export function Navbar({ links }: NavbarProps) {
 
       {/* Desktop Hover Menu Overlay */}
       <AnimatePresence>
-        {activeHover && (
+        {activeHover && DROPDOWN_CONFIG[activeHover] && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -512,7 +507,7 @@ export function Navbar({ links }: NavbarProps) {
             style={{ height: "369px" }}
           >
             <div className="w-full max-w-[1440px] mx-auto h-full flex items-center justify-between px-12 lg:px-24">
-              {(activeHover === "skin" ? skinMenuItems : makeupMenuItems).map((item, idx) => (
+              {DROPDOWN_CONFIG[activeHover].menuItems.map((item, idx) => (
                 <Link
                   key={item.label}
                   href={item.href}
