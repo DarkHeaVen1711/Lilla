@@ -6,6 +6,7 @@ import { X, Edit3, Phone, Mail } from "lucide-react";
 import { Loader } from "@/components/ui/Loader";
 import { useStore } from "@/store/useStore";
 import { useOtpAuthFlow } from "@/hooks/useOtpAuthFlow";
+import { SignupForm } from "./SignupForm";
 
 // ─── Country Code Data ────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
@@ -37,7 +38,6 @@ const API_BASE_URL =
 export function AuthModal() {
   const { authModal, closeAuthModal, setAuthModalStage, loginUser, flushFrozenIntent } = useStore();
 
-  // ── Phase 1-2 State ──────────────────────────────────────────────────────
   const {
     step,
     setStep,
@@ -63,6 +63,8 @@ export function AuthModal() {
     handleVerifyOtp,
     resetForm,
   } = useOtpAuthFlow();
+
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
   const otpRefs = [
     useRef<HTMLInputElement>(null),
@@ -239,11 +241,28 @@ export function AuthModal() {
                   transition={{ duration: 0.25 }}
                 >
                   <h2 id="auth-modal-title" className="font-serif text-2xl text-black mb-1">Log In or Sign Up</h2>
-                  <p className="text-gray-500 text-sm mb-6">
-                    Enter your {isEmailMode ? "email" : "phone number"} to receive a one-time code.
-                  </p>
+                  <div className="flex gap-4 mb-4 text-sm">
+                    <button
+                      onClick={() => setMode("login")}
+                      className={mode === "login" ? "font-semibold underline" : "text-neutral-500"}
+                    >
+                      Log In
+                    </button>
+                    <button
+                      onClick={() => setMode("signup")}
+                      className={mode === "signup" ? "font-semibold underline" : "text-neutral-500"}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                  
+                  {mode === "login" ? (
+                    <>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Enter your {isEmailMode ? "email" : "phone number"} to receive a one-time code.
+                      </p>
 
-                  {/* Mode Toggle */}
+                      {/* Mode Toggle */}
                   <div className="flex gap-2 mb-5">
                     <button
                       onClick={() => { setInputMode("phone"); setAuthValue(""); setSendError(""); }}
@@ -337,6 +356,16 @@ export function AuthModal() {
                       {sendLoading ? <Loader size="xs" className="text-white" /> : "Send OTP"}
                     </button>
                   </form>
+                  </>
+                  ) : (
+                    <SignupForm
+                      onSignupSuccess={(email) => {
+                        setAuthValue(email);
+                        setInputMode("email");
+                        setAuthModalStage("OTP_VERIFICATION");
+                      }}
+                    />
+                  )}
                 </motion.div>
               )}
 

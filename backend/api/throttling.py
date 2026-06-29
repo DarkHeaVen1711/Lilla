@@ -49,3 +49,8 @@ class GenerateDescriptionThrottle(SimpleRateThrottle):
             'scope': self.scope,
             'ident': ident
         }
+
+from rest_framework.throttling import AnonRateThrottle
+
+class EmailSignupThrottle(AnonRateThrottle):
+    scope = 'email_signup'
