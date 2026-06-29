@@ -289,9 +289,55 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 import re
+from django.contrib.auth.password_validation import validate_password
 
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
 PHONE_REGEX = re.compile(r'^\+?\d{3,15}$')
+
+class EmailSignupSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150, trim_whitespace=True)
+    email = serializers.EmailField()
+    gender = serializers.ChoiceField(choices=[("male", "Male"), ("female", "Female"), ("other", "Other")])
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_email(self, value):
+        from django.contrib.auth.models import User
+        normalized = value.strip().lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return normalized
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return attrs
+
+    def create(self, validated_data):
+        from django.contrib.auth.models import User
+        validated_data.pop("confirm_password")
+        password = validated_data.pop("password")
+        name = validated_data.pop("name")
+        email = validated_data["email"]
+
+        user = User(
+            username=email,
+            email=email,
+            first_name=name,
+        )
+        user.set_password(password)
+        user.save()
+        
+        profile = user.userprofile
+        profile.gender = validated_data["gender"]
+        profile.signup_method = "email"
+        profile.save(update_fields=['gender', 'signup_method'])
+        
+        return user
 
 class OTPRequestSerializer(serializers.Serializer):
     identity = serializers.CharField(required=True)
@@ -388,12 +434,14 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     phone = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
+    gender = serializers.CharField(source='userprofile.gender', required=False, allow_null=True, allow_blank=True)
+    signup_method = serializers.CharField(source='userprofile.signup_method', read_only=True)
 
     class Meta:
         from django.contrib.auth.models import User
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'role']
-        read_only_fields = ['id', 'phone', 'role']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'role', 'gender', 'signup_method']
+        read_only_fields = ['id', 'phone', 'role', 'signup_method']
 
     def get_phone(self, obj):
         if '@' not in obj.username:
@@ -428,6 +476,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.first_name = validated_data.get('first_name', instance.first_name).strip()
         instance.last_name = validated_data.get('last_name', instance.last_name).strip()
         instance.save()
+
+        if 'userprofile' in validated_data and 'gender' in validated_data['userprofile']:
+            try:
+                profile = instance.userprofile
+                profile.gender = validated_data['userprofile']['gender']
+                profile.save(update_fields=['gender'])
+            except Exception:
+                pass
+
         return instance
 
 

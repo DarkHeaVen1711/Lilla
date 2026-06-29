@@ -22,9 +22,12 @@ from .serializers import (
     CategorySerializer, ProductSerializer, OrderSerializer,
     CategoryWithProductsSerializer, ComboSerializer, NestedProductSerializer,
     OTPRequestSerializer, OTPVerifySerializer, FavoriteSerializer, AddressSerializer,
-    ReviewSerializer, ReviewCreateSerializer
+    ReviewSerializer, ReviewCreateSerializer, EmailSignupSerializer
 )
-from .throttling import RequestOTPThrottle, VerifyOTPThrottle
+from .throttling import RequestOTPThrottle, VerifyOTPThrottle, EmailSignupThrottle
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from .emails import send_email_async
 
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
@@ -506,6 +509,45 @@ class DealOfTheDayView(APIView):
         })
 
 
+OTP_CACHE_TTL_SECONDS = 300
+
+def generate_otp_code() -> str:
+    return f"{secrets.randbelow(10**6):06d}"
+
+def send_otp_email(user, code: str):
+    context = {"otp_code": code, "expiry_minutes": OTP_CACHE_TTL_SECONDS // 60}
+    html_body = render_to_string("emails/otp_code.html", context)
+    text_body = render_to_string("emails/otp_code.txt", context)
+
+    email = EmailMultiAlternatives(
+        subject="Your LILLA verification code",
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    email.attach_alternative(html_body, "text/html")
+    send_email_async(email)
+
+def send_otp_for_user(user, channel: str) -> str:
+    code = generate_otp_code()
+    if channel == "email":
+        identity = user.email
+        send_otp_email(user, code)
+    else:
+        identity = user.username
+        print(f"[OTP SMS] Sending {code} to {identity}")
+
+    cache_key = f"otp:{identity}"
+    cache.set(cache_key, code, timeout=OTP_CACHE_TTL_SECONDS)
+    
+    print("\n" + "="*50)
+    print(f"[OTP REQUEST LOG] Identity: {identity}")
+    print(f"[OTP REQUEST LOG] Cryptographically Secure OTP: {code}")
+    print(f"[OTP REQUEST LOG] TTL: 300 seconds")
+    print("="*50 + "\n")
+    return code
+
+
 class RequestOTPView(APIView):
     throttle_classes = [RequestOTPThrottle]
 
@@ -520,21 +562,37 @@ class RequestOTPView(APIView):
             user.email = identity
             user.save()
             
-        pin = f"{secrets.SystemRandom().randint(100000, 999999)}"
-        cache_key = f"otp:{identity}"
-        cache.set(cache_key, pin, timeout=300)
-        
-        print("\n" + "="*50)
-        print(f"[OTP REQUEST LOG] Identity: {identity}")
-        print(f"[OTP REQUEST LOG] Cryptographically Secure OTP: {pin}")
-        print(f"[OTP REQUEST LOG] TTL: 300 seconds")
-        print("="*50 + "\n")
+        channel = "email" if '@' in identity else "phone"
+        pin = send_otp_for_user(user, channel)
         
         return Response({
             "detail": "OTP requested successfully.",
             "identity": identity,
             "otp": pin
         }, status=status.HTTP_200_OK)
+
+
+from rest_framework.permissions import AllowAny
+
+class EmailSignupView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [EmailSignupThrottle]
+
+    def post(self, request):
+        serializer = EmailSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        pin = send_otp_for_user(user, channel="email")
+
+        return Response(
+            {
+                "detail": "Account created. Verification code sent to your email.",
+                "email": user.email,
+                "otp": pin
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class VerifyOTPView(APIView):

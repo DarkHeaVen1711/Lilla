@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
-    RequestOTPView, VerifyOTPView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
+    RequestOTPView, VerifyOTPView, EmailSignupView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
     CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView, ReviewHelpfulVoteView,
     AdminUserRoleUpdateView, AdminProductApproveDeletionView, AdminProductRejectDeletionView, ProductDescriptionGenerateView, BulkProductUploadView,
     ManagerInsightsView, ManagerProductFormMetadataView
@@ -22,6 +22,7 @@ urlpatterns = [
     path('homepage/', HomepageDataView.as_view(), name='homepage-data'),
     path('auth/request-otp/', RequestOTPView.as_view(), name='auth-request-otp'),
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
+    path('auth/signup/', EmailSignupView.as_view(), name='email-signup'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('auth/profile/', UserProfileView.as_view(), name='auth-profile'),
     path('currency-rates/', CurrencyRatesView.as_view(), name='currency-rates'),

@@ -7,6 +7,20 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+def send_email_async(email_msg):
+    def run():
+        try:
+            email_msg.send()
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+
+    if getattr(settings, 'EMAIL_BACKEND', '') == 'django.core.mail.backends.locmem.EmailBackend':
+        run()
+    else:
+        thread = threading.Thread(target=run)
+        thread.daemon = True
+        thread.start()
+
 def send_html_invoice_email(order):
     def run():
         try:

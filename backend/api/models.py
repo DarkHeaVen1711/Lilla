@@ -147,6 +147,31 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer", db_index=True)
 
+    GENDER_MALE = "male"
+    GENDER_FEMALE = "female"
+    GENDER_OTHER = "other"
+
+    GENDER_CHOICES = [
+        (GENDER_MALE, "Male"),
+        (GENDER_FEMALE, "Female"),
+        (GENDER_OTHER, "Other"),
+    ]
+
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Optional for phone-only signups; required for email signup.",
+    )
+
+    signup_method = models.CharField(
+        max_length=10,
+        choices=[("email", "Email"), ("phone", "Phone")],
+        default="phone",
+        help_text="Tracks which signup path created this account — informs which profile fields to expect/require.",
+    )
+
     def __str__(self):
         return f"{self.user.username} ({self.role})"
 

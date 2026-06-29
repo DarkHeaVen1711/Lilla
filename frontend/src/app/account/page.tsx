@@ -198,6 +198,8 @@ export default function AccountDashboard() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [gender, setGender] = useState("");
+  const [signupMethod, setSignupMethod] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
   const [expandedTracking, setExpandedTracking] = useState<Record<string, boolean>>({});
@@ -256,6 +258,8 @@ export default function AccountDashboard() {
           setFirstName(data.first_name || "");
           setLastName(data.last_name || "");
           setEmail(data.email || "");
+          setGender(data.gender || "");
+          setSignupMethod(data.signup_method || "phone");
         }
       })
       .catch((err) => console.error("Error loading user profile details:", err));
@@ -305,6 +309,7 @@ export default function AccountDashboard() {
           first_name: firstName,
           last_name: lastName,
           email: email,
+          userprofile: { gender },
         }),
       });
 
@@ -585,7 +590,19 @@ export default function AccountDashboard() {
                   transition={{ duration: 0.25 }}
                   className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-[0_15px_40px_rgba(0,0,0,0.02)]"
                 >
-                  <h2 className="text-2xl font-serif mb-6 text-gray-900 border-b border-gray-50 pb-4">Profile Settings</h2>
+                  <div className="flex items-center justify-between border-b border-gray-50 pb-4 mb-6">
+                    <h2 className="text-2xl font-serif text-gray-900">Profile Settings</h2>
+                    {signupMethod === "email" && (
+                      <span className="bg-brand-bg-pink text-brand-primary text-xs font-bold px-3 py-1 rounded-full">
+                        Email Account
+                      </span>
+                    )}
+                    {signupMethod === "phone" && (
+                      <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">
+                        Phone Account
+                      </span>
+                    )}
+                  </div>
                   
                   {profileMessage.text && (
                     <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 text-sm font-medium ${
@@ -623,16 +640,32 @@ export default function AccountDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="h-[52px] px-4 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm font-medium"
-                        placeholder="email@example.com"
-                        required
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="h-[52px] px-4 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm font-medium"
+                          placeholder="email@example.com"
+                          required={signupMethod === "email"}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Gender</label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="h-[52px] px-4 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm font-medium bg-white"
+                          required={signupMethod === "email"}
+                        >
+                          <option value="">Select Gender (Optional)</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
