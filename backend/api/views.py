@@ -1476,21 +1476,30 @@ class ManagerProductFormMetadataView(APIView):
             "key_ingredients": sorted(list(key_ingredients_set))
         }, status=status.HTTP_200_OK)
 
- 
- c l a s s   C a r t S t o c k C h e c k V i e w ( A P I V i e w ) :  
-         p e r m i s s i o n _ c l a s s e s   =   [ A l l o w A n y ]  
-         d e f   p o s t ( s e l f ,   r e q u e s t ) :  
-                 i t e m s   =   r e q u e s t . d a t a . g e t ( ' i t e m s ' ,   [ ] )  
-                 r e s u l t s   =   [ ]  
-                 f o r   i t e m   i n   i t e m s :  
-                         p r o d u c t   =   P r o d u c t . o b j e c t s . f i l t e r ( i d = i t e m . g e t ( ' p r o d u c t _ i d ' ) ) . f i r s t ( )  
-                         i f   n o t   p r o d u c t :  
-                                 r e s u l t s . a p p e n d ( { ' p r o d u c t _ i d ' :   i t e m . g e t ( ' p r o d u c t _ i d ' ) ,   ' a v a i l a b l e ' :   F a l s e ,   ' r e a s o n ' :   ' n o t _ f o u n d ' } )  
-                                 c o n t i n u e  
-                         r e q u e s t e d _ q t y   =   i t e m . g e t ( ' q u a n t i t y ' ,   0 )  
-                         i f   p r o d u c t . s t o c k   <   r e q u e s t e d _ q t y :  
-                                 r e s u l t s . a p p e n d ( { ' p r o d u c t _ i d ' :   p r o d u c t . i d ,   ' a v a i l a b l e ' :   F a l s e ,   ' r e a s o n ' :   ' i n s u f f i c i e n t _ s t o c k ' ,   ' i n _ s t o c k ' :   p r o d u c t . s t o c k ,   ' r e q u e s t e d ' :   r e q u e s t e d _ q t y } )  
-                         e l s e :  
-                                 r e s u l t s . a p p e n d ( { ' p r o d u c t _ i d ' :   p r o d u c t . i d ,   ' a v a i l a b l e ' :   T r u e } )  
-                 r e t u r n   R e s p o n s e ( { ' r e s u l t s ' :   r e s u l t s } )  
- 
+
+class CartStockCheckView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        items = request.data.get('items', [])
+        results = []
+        for item in items:
+            product = Product.objects.filter(id=item.get('product_id')).first()
+            if not product:
+                results.append({'product_id': item.get('product_id'), 'available': False, 'reason': 'not_found'})
+                continue
+            requested_qty = item.get('quantity', 0)
+            if product.stock < requested_qty:
+                results.append({'product_id': product.id, 'available': False, 'reason': 'insufficient_stock', 'in_stock': product.stock, 'requested': requested_qty})
+            else:
+                results.append({'product_id': product.id, 'available': True})
+        return Response({'results': results})
+
+
+def merge_guest_favorites(user, guest_product_ids):
+    from .models import Favorite
+    existing_ids = set(
+        Favorite.objects.filter(user=user, product_id__in=guest_product_ids).values_list("product_id", flat=True)
+    )
+    new_ids = set(guest_product_ids) - existing_ids
+    Favorite.objects.bulk_create([Favorite(user=user, product_id=pid) for pid in new_ids])
+
