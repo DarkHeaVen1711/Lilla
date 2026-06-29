@@ -187,6 +187,7 @@ export default function AccountDashboard() {
   const logoutUser = useStore((s) => s.logoutUser);
   const updateUserMetadata = useStore((s) => s.updateUserMetadata);
   const openAuthModal = useStore((s) => s.openAuthModal);
+  const hydrated = useStore((s) => s.hydrated);
 
   const [activeTab, setActiveTab] = useState<string>(activeTabParam);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -465,6 +466,14 @@ export default function AccountDashboard() {
     router.push("/");
   };
 
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-20">
+        <Loader size="md" className="text-brand-primary" />
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center pt-20 text-center px-5 bg-gradient-to-tr from-brand-bg-pink/30 via-white to-white">
@@ -487,8 +496,8 @@ export default function AccountDashboard() {
     );
   }
 
-  const userInitial = user.metadata.first_name?.[0] || user.identityString[0];
-  const userFullName = user.metadata.first_name
+  const userInitial = user.metadata?.first_name?.[0] || user.identityString?.[0] || "?";
+  const userFullName = user.metadata?.first_name
     ? `${user.metadata.first_name} ${user.metadata.last_name || ""}`.trim()
     : "Valued Customer";
 

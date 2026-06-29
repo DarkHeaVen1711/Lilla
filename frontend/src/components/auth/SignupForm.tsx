@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { Loader } from "@/components/ui/Loader";
 
 interface SignupFormProps {
-  onSignupSuccess: (email: string) => void; 
+  onSignupSuccess: (email: string, otp?: string) => void; 
 }
 
 type Gender = "male" | "female" | "other";
@@ -61,7 +61,8 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
         throw new Error("Signup failed");
       }
 
-      onSignupSuccess(email);
+      const data = await res.json().catch(() => null);
+      onSignupSuccess(email, data?.otp);
     } catch {
       setErrors({ submit: "Something went wrong. Please try again." });
     } finally {

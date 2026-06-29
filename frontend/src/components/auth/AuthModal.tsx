@@ -359,9 +359,13 @@ export function AuthModal() {
                   </>
                   ) : (
                     <SignupForm
-                      onSignupSuccess={(email) => {
+                      onSignupSuccess={(email, otp) => {
                         setAuthValue(email);
                         setInputMode("email");
+                        if (otp) {
+                          setDevOtp(otp);
+                          alert(`Verification OTP code: ${otp}`);
+                        }
                         setAuthModalStage("OTP_VERIFICATION");
                       }}
                     />
