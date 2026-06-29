@@ -59,6 +59,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.SimpleRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/minute',
+        'user': '1000/minute',
         'request_otp': '3/minute',
         'verify_otp': '5/minute',
         'email_signup': '5/hour',
