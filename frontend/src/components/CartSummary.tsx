@@ -4,7 +4,9 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m as motion } from "framer-motion";
-import { X, Percent, ChevronLeft, ChevronRight, Trash2, Tag, CheckCircle2 } from "lucide-react";
+import { X, Percent, ChevronLeft, ChevronRight, Trash2, Tag, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useEffect } from "react";
+import { apiClient } from "@/lib/api/client";
 
 import { useStore } from "@/store/useStore";
 import { YouMayAlsoLikeSection } from "@/components/shared/YouMayAlsoLikeSection";
@@ -23,7 +25,27 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
   const applyCoupon = useStore((s) => s.applyCoupon);
   const [couponInput, setCouponInput] = useState("");
   const [couponMsg, setCouponMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [stockWarnings, setStockWarnings] = useState<any[]>([]);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function checkStock() {
+      const items = cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity }));
+      try {
+        const response = await apiClient.post("/api/cart/check-stock/", { items });
+        if (response.data && response.data.results) {
+          setStockWarnings(response.data.results.filter((r: any) => !r.available));
+        }
+      } catch (err) {
+        console.error("Error checking stock:", err);
+      }
+    }
+    if (cartItems.length > 0) {
+      checkStock();
+    } else {
+      setStockWarnings([]);
+    }
+  }, [cartItems]);
 
   const deliveryThreshold = 51;
   const progress = Math.min((subtotal / deliveryThreshold) * 100, 100);
@@ -131,7 +153,16 @@ export function CartSummary({ recommendedProducts }: CartSummaryProps) {
                               </span>
                             )}
                           </div>
-                          <span className="text-green-600 text-xs sm:text-sm font-semibold mt-1.5">In Stock</span>
+                          {stockWarnings.find(w => w.product_id.toString() === item.id) ? (
+                            <div className="flex items-center gap-1.5 mt-2 text-amber-600">
+                              <AlertTriangle className="w-4 h-4" />
+                              <span className="text-xs sm:text-sm font-semibold">
+                                Only {stockWarnings.find(w => w.product_id.toString() === item.id)?.in_stock || 0} left in stock. Please reduce quantity.
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-green-600 text-xs sm:text-sm font-semibold mt-1.5">In Stock</span>
+                          )}
                         </div>
                       </div>
   

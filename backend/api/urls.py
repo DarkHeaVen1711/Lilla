@@ -4,6 +4,7 @@ from .views import (
     CategoryListView, ProductViewSet, HomepageDataView,
     OrderCreateView, OrderDetailView, CategoryWithProductsListView, ActiveCombosListView, DealOfTheDayView,
     RequestOTPView, VerifyOTPView, EmailSignupView, OrderRefundView, OrderStatusUpdateView, AdminUserListView, AdminUserUpdateView, FavoriteViewSet, AddressViewSet,
+    CartStockCheckView,
     CouponValidateView, AdminAnalyticsView, StockAdjustmentListView, UserProfileView, CurrencyRatesView, ReviewHelpfulVoteView,
     AdminUserRoleUpdateView, AdminProductApproveDeletionView, AdminProductRejectDeletionView, ProductDescriptionGenerateView, BulkProductUploadView,
     ManagerInsightsView, ManagerProductFormMetadataView
@@ -40,6 +41,7 @@ urlpatterns = [
     path('orders/<uuid:id>/', OrderDetailView.as_view(), name='order-detail'),
     path('orders/<uuid:id>/refund/', OrderRefundView.as_view(), name='order-refund'),
     path('admin/orders/<uuid:id>/status/', OrderStatusUpdateView.as_view(), name='order-status-update'),
+    path('cart/check-stock/', CartStockCheckView.as_view(), name='cart-stock-check'),
     path('coupons/validate/', CouponValidateView.as_view(), name='coupons-validate'),
     path('catalog/categories-products/', CategoryWithProductsListView.as_view(), name='catalog-categories-products'),
     path('catalog/active-combos/', ActiveCombosListView.as_view(), name='catalog-active-combos'),
