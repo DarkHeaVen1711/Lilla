@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiClient } from "@/lib/api/client";
+import { apiFetch } from "@/lib/apiClient";
 import { Loader } from "@/components/ui/Loader";
 
 interface SignupFormProps {
@@ -36,25 +36,34 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
 
     setSubmitting(true);
     try {
-      await apiClient.post("/api/auth/signup/", {
-        name,
-        email,
-        gender,
-        password,
-        confirm_password: confirmPassword,
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/auth/signup/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          gender,
+          password,
+          confirm_password: confirmPassword,
+        }),
       });
-      onSignupSuccess(email);
-    } catch (err: any) {
-      const backendErrors = err?.response?.data;
-      if (backendErrors && typeof backendErrors === "object") {
-        const mapped: Record<string, string> = {};
-        Object.entries(backendErrors).forEach(([key, val]) => {
-          mapped[key] = Array.isArray(val) ? val[0] : String(val);
-        });
-        setErrors(mapped);
-      } else {
-        setErrors({ submit: "Something went wrong. Please try again." });
+
+      if (!res.ok) {
+        const backendErrors = await res.json().catch(() => null);
+        if (backendErrors && typeof backendErrors === "object") {
+          const mapped: Record<string, string> = {};
+          Object.entries(backendErrors).forEach(([key, val]) => {
+            mapped[key] = Array.isArray(val) ? val[0] : String(val);
+          });
+          setErrors(mapped);
+          return;
+        }
+        throw new Error("Signup failed");
       }
+
+      onSignupSuccess(email);
+    } catch {
+      setErrors({ submit: "Something went wrong. Please try again." });
     } finally {
       setSubmitting(false);
     }
